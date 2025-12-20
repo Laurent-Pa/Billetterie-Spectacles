@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/Éléments de solution/">
+    <File Path=".gitignore" />
+  </Folder>
+  <Project Path="Billetterie-Spectacles.Application/Billetterie-Spectacles.Application.csproj" Id="00e120e5-fc26-4c23-a275-8ef6fff13b2e" />
+  <Project Path="Billetterie-Spectacles.Domain/Billetterie-Spectacles.Domain.csproj" Id="2d8fcb7b-1174-4887-80c3-96df9826d0fb" />
+  <Project Path="Billetterie-Spectacles.Infrastructure/Billetterie-Spectacles.Infrastructure.csproj" Id="7972f17d-7435-4e9e-a8a7-a6c9822bcbcc" />
+  <Project Path="Billetterie-Spectacles.Presentation/Billetterie-Spectacles.Presentation.csproj" Id="7654e0f7-9a8a-4d73-a8a2-0aaa70a83ff1" />
+</Solution>
