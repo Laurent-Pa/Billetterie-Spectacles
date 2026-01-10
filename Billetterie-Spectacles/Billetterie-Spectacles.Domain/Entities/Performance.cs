@@ -8,6 +8,7 @@ namespace Billetterie_Spectacles.Domain.Entities
         public int PerformanceId { get; set; }
         public DateTime Date { get; set; }
         public PerformanceStatus Status { get; private set; } = PerformanceStatus.Scheduled;
+        public decimal UnitPrice { get; private set; }
         public int Capacity { get; set; }
         public int AvailableTickets { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -25,14 +26,16 @@ namespace Billetterie_Spectacles.Domain.Entities
         #region Constructors
         private Performance() { }
 
-        public Performance(int spectacleId, DateTime date, int capacity)
+        public Performance(int spectacleId, DateTime date, int capacity, decimal unitPrice)
         {
             ValidateSpectacleId(spectacleId);
             ValidateDate(date);
             ValidateCapacity(capacity);
+            ValidateUnitPrice(unitPrice);
 
             SpectacleId = spectacleId;
             Date = date;
+            UnitPrice = unitPrice;
             Capacity = capacity;
             AvailableTickets = capacity; // A l'initialisation il n'y a pas de tickets vendus
             Status = PerformanceStatus.Scheduled;
@@ -118,6 +121,12 @@ namespace Billetterie_Spectacles.Domain.Entities
         {
             if (capacity <= 0)
                 throw new ArgumentException("La capacité doit être strictement positive.", nameof(capacity));
+        }
+
+        private static void ValidateUnitPrice(decimal unitPrice)
+        {
+            if (unitPrice < 0)
+                throw new ArgumentException("Le prix unitaire doit être strictement positif.", nameof(unitPrice));
         }
 
 

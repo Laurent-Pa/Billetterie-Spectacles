@@ -8,7 +8,7 @@ namespace Billetterie_Spectacles.Domain.Entities
         public string Name { get; set; } = string.Empty;
         public SpectacleCategory Category { get; private set; }
         public string? Description { get; set; }
-        public int Duration { get; set; }
+        public int Duration { get; set; }       // minutes
         public string? Thumbnail { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

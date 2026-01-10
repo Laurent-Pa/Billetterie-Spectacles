@@ -180,6 +180,11 @@ namespace Billetterie_Spectacles.Infrastructure.Data
                     .HasConversion<int>()
                     .IsRequired();
 
+                entity.Property(p => p.UnitPrice)
+                    .HasColumnName("unit_price")
+                    .HasColumnType("decimal(18,2)")
+                    .IsRequired();
+
                 entity.Property(p => p.Capacity)
                     .HasColumnName("capacity")
                     .IsRequired();
