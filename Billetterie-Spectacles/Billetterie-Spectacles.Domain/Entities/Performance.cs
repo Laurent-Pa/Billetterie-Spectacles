@@ -1,6 +1,5 @@
-﻿using Billeterie_Spectacles.Domain.Exceptions;
-using Billetterie_Spectacles.Domain.Enums;
-using System.Net.Sockets;
+﻿using Billetterie_Spectacles.Domain.Enums;
+using Billetterie_Spectacles.Domain.Exceptions;
 
 namespace Billetterie_Spectacles.Domain.Entities
 {

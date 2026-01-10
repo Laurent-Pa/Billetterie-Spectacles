@@ -1,4 +1,4 @@
-﻿namespace Billeterie_Spectacles.Domain.Exceptions
+﻿namespace Billetterie_Spectacles.Domain.Exceptions
 {
     public class DomainException : Exception
     {
