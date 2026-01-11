@@ -18,7 +18,7 @@ namespace Billetterie_Spectacles.Domain.Entities
         public User User { get; set; } = null!;
 
         // Relation : Une commande contient plusieurs tickets
-        private readonly List<Ticket> _tickets = new List<Ticket>();
+        private readonly List<Ticket> _tickets = new();
         public IReadOnlyCollection<Ticket> Tickets => _tickets.AsReadOnly();
 
         #region Constructors

@@ -12,8 +12,8 @@ namespace Billetterie_Spectacles.Application.Interfaces
     {
         // Operations du CRUD
         Task<User?> AddAsync(User user);      // Create
-        Task<User> GetByIdAsync(int id);        // Read
-        Task<IEnumerable<User>> GetAllAsync();  // Read
+        Task<User?> GetByIdAsync(int id);        // Read
+        Task<IEnumerable<User?>> GetAllAsync();  // Read
         Task<User> UpdateAsync(User user);      // Update
         Task<bool> DeleteAsync(int id);         // Delete
 

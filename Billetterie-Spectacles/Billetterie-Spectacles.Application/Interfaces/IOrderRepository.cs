@@ -9,9 +9,9 @@ namespace Billetterie_Spectacles.Application.Interfaces
     public interface IOrderRepository
     {
         // Opérations CRUD de base
-        Task<Order> AddAsync(Order order);      // Create
+        Task<Order?> AddAsync(Order order);      // Create
         Task<Order?> GetByIdAsync(int id);      // Read
-        Task<IEnumerable<Order>> GetAllAsync(); // Read
+        Task<IEnumerable<Order?>> GetAllAsync(); // Read
         Task<Order> UpdateAsync(Order order);   // Update
         Task<bool> DeleteAsync(int id);         // Delete
 

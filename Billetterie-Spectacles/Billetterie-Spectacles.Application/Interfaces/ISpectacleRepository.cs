@@ -11,7 +11,7 @@ namespace Billetterie_Spectacles.Application.Interfaces
     public interface ISpectacleRepository
     {
         // Opérations CRUD de base
-        Task<Spectacle> AddAsync(Spectacle spectacle);      // Create
+        Task<Spectacle?> AddAsync(Spectacle spectacle);      // Create
         Task<Spectacle?> GetByIdAsync(int id);              // Read
         Task<IEnumerable<Spectacle>> GetAllAsync();         // Read
         Task<Spectacle> UpdateAsync(Spectacle spectacle);   // Update

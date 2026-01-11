@@ -9,9 +9,9 @@ namespace Billetterie_Spectacles.Application.Interfaces
     public interface IPerformanceRepository
     {
         // Opérations CRUD de base
-        Task<Performance> AddAsync(Performance performance);        // Create
+        Task<Performance?> AddAsync(Performance performance);        // Create
         Task<Performance?> GetByIdAsync(int id);                    // Read
-        Task<IEnumerable<Performance>> GetAllAsync();               // Read
+        Task<IEnumerable<Performance?>> GetAllAsync();               // Read
         Task<Performance> UpdateAsync(Performance performance);     // Update
         Task<bool> DeleteAsync(int id);                             // Delete
 

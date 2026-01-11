@@ -3,7 +3,7 @@
     public enum OrderStatus
     {
         Pending = 0,      // En attente de paiement
-        Paid = 1,         // Payée
+        Paid = 1,         // Paiement confirmé
         Cancelled = 2,    // Annulée
         Refunded = 3      // Remboursée
     }
