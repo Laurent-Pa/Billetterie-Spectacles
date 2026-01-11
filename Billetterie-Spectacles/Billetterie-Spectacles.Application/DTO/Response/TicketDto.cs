@@ -10,6 +10,8 @@
         string Status,
         decimal Price,
         int OrderId,            // permettra d'afficher les billets d'une commande (pour client)
-        int PerformanceId       // permettra d'afficher les billets d'une représentation (pour organisateur)
+        int PerformanceId,       // permettra d'afficher les billets d'une représentation (pour organisateur)
+        DateTime CreatedAt,     // suis la date de création de la commande correspondante
+        DateTime UpdatedAt      // suis la commande ou la vie individuelle du ticket
     );
 }

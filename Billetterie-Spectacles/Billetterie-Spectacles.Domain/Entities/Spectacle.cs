@@ -66,7 +66,7 @@ namespace Billetterie_Spectacles.Domain.Entities
 
         private static void ValidateCategory(SpectacleCategory category)
         {
-            if (!Enum.IsDefined(typeof(SpectacleCategory), category))
+            if (!Enum.IsDefined(category))
                 throw new ArgumentException("La catégorie spécifiée n'est pas valide.", nameof(category));
         }
 
@@ -84,7 +84,11 @@ namespace Billetterie_Spectacles.Domain.Entities
 
 
         // Méthodes métier
-        public void UpdateDetails(string name, SpectacleCategory category, int duration, string? description = null)
+        /// <summary>
+        /// Met à jour tous les détails du spectacle
+        /// Utilisé pour la modification complète via un formulaire d'édition
+        /// </summary>
+        public void UpdateDetails(string name, SpectacleCategory category, int duration, string? description = null, string? thumbnail = null)
         {
             ValidateName(name);
             ValidateCategory(category);
@@ -94,8 +98,15 @@ namespace Billetterie_Spectacles.Domain.Entities
             Category = category;
             Duration = duration;
             Description = description?.Trim();
+            Thumbnail = thumbnail?.Trim();
             UpdateTimestamp();
         }
+
+        /// <summary>
+        /// Modifie uniquement le thumbnail (image) du spectacle
+        /// Utilisé pour l'upload/suppression d'image sans modifier les autres détails
+        /// </summary>
+        /// <param name="thumbnailUrl">URL de la nouvelle image, ou null pour supprimer</param>
 
         public void SetThumbnail(string? thumbnailUrl)
         {

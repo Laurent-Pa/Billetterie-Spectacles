@@ -12,6 +12,8 @@ namespace Billetterie_Spectacles.Domain.Entities
         // Clés étrangères
         public int OrderId { get; set; }
         public int PerformanceId { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // Propriétés de navigation pour faciliter les requetes avec EF Core
         public Order Order { get; set; } = null!;

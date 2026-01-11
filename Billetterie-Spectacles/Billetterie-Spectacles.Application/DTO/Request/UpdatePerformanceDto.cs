@@ -21,10 +21,14 @@ namespace Billetterie_Spectacles.Application.DTO.Request
 
         [Required(ErrorMessage = "Le prix est obligatoire")]
         [Range(0, 10000, ErrorMessage = "Le prix doit être entre 0 et 10 000€")]
-        public decimal Price { get; set; }
+        public decimal UnitPrice { get; set; }
 
-        [Required(ErrorMessage = "Le statut est obligatoire")]
-        [ValidPerformanceStatus]    // Valeurs valides : "Scheduled", "SoldOut", "Cancelled", "Completed"
-        public string Status { get; set; } = string.Empty;
+        // Le statut ne peut pas être mis à jour par un organisateur
+        // l'annulation est une opération particulière qui impacte le statut des tickets
+        // SoldOut est généré automatiquement en fonction de la vente des billets
+        // Completed se met à jour en fonction de la date
+        //[Required(ErrorMessage = "Le statut est obligatoire")]
+        //[ValidPerformanceStatus]    // Valeurs valides : "Scheduled", "SoldOut", "Cancelled", "Completed"
+        //public string Status { get; set; } = string.Empty;
     }
 }

@@ -46,25 +46,40 @@ namespace Billetterie_Spectacles.Domain.Entities
 
         #region Methods
         // Methodes métier
+
+        /// <summary>
+        /// Réserve des tickets (diminue AvailableTickets)
+        /// Gère automatiquement le passage à SoldOut si plus de places
+        /// </summary>
         public void BookTickets(int quantity)
         {
-            if (Status != PerformanceStatus.Scheduled)
-                throw new DomainException("Impossible de réserver des tickets pour une performance non programmée.");
-
             if (quantity <= 0)
                 throw new ArgumentException("La quantité doit être positive.", nameof(quantity));
 
-            if (quantity > AvailableTickets)
-                throw new InsufficientTicketsException(quantity, AvailableTickets);
+            if (Status == PerformanceStatus.Cancelled)
+                throw new DomainException("Impossible de réserver des billets pour une performance annulée.");
+
+            if (Status == PerformanceStatus.Completed)
+                throw new DomainException("Impossible de réserver des billets pour une performance terminée.");
+
+            if (AvailableTickets < quantity)
+                throw new DomainException($"Pas assez de places disponibles. Disponibles : {AvailableTickets}");
 
             AvailableTickets -= quantity;
 
+            // ✅ Passage automatique à SoldOut
             if (AvailableTickets == 0)
+            {
                 Status = PerformanceStatus.SoldOut;
+            }
 
             UpdateTimestamp();
         }
 
+        /// <summary>
+        /// Libère des tickets (augmente AvailableTickets)
+        /// Gère automatiquement le retour à Scheduled si c'était SoldOut
+        /// </summary>
         public void ReleaseTickets(int quantity)
         {
             if (quantity <= 0)
@@ -81,19 +96,32 @@ namespace Billetterie_Spectacles.Domain.Entities
             UpdateTimestamp();
         }
 
+                // <summary>
+        /// Annule la performance (change le statut à Cancelled)
+        /// </summary>
         public void Cancel()
         {
+            if (Status == PerformanceStatus.Cancelled)
+                throw new DomainException("La performance est déjà annulée.");
+
             if (Status == PerformanceStatus.Completed)
-                throw new DomainException("Une performance terminée ne peut pas être annulée.");
+                throw new DomainException("Impossible d'annuler une performance terminée.");
 
             Status = PerformanceStatus.Cancelled;
             UpdateTimestamp();
         }
 
+        /// <summary>
+        /// Marque la performance comme terminée
+        /// Nécessite un job/worker en arrière plan exécuté tous les jours
+        /// </summary>
         public void MarkAsCompleted()
         {
+            if (Date > DateTime.UtcNow)
+                throw new DomainException("La performance n'a pas encore eu lieu.");
+
             if (Status == PerformanceStatus.Cancelled)
-                throw new DomainException("Une performance annulée ne peut pas être marquée comme terminée.");
+                throw new DomainException("Impossible de marquer comme terminée une performance annulée.");
 
             Status = PerformanceStatus.Completed;
             UpdateTimestamp();
@@ -127,6 +155,55 @@ namespace Billetterie_Spectacles.Domain.Entities
         {
             if (unitPrice < 0)
                 throw new ArgumentException("Le prix unitaire doit être strictement positif.", nameof(unitPrice));
+        }
+
+        /// <summary>
+        /// Met à jour les détails de la performance
+        /// </summary>
+        public void UpdateDetails(DateTime date, int capacity, decimal unitPrice)
+        {
+            // Validation : Date future
+            if (date <= DateTime.UtcNow)
+                throw new ArgumentException("La date doit être dans le futur.", nameof(date));
+
+            // Validation : Capacité positive
+            if (capacity <= 0)
+                throw new ArgumentException("La capacité doit être positive.", nameof(capacity));
+
+            // Validation : Prix positif ou nul
+            if (unitPrice < 0)
+                throw new ArgumentException("Le prix ne peut pas être négatif.", nameof(unitPrice));
+
+            // Validation CRITIQUE : Vérifier la capacité vs billets vendus
+            int ticketsSold = Capacity - AvailableTickets;  // Calculer les billets déjà vendus
+
+            if (capacity < ticketsSold)
+            {
+                throw new DomainException(
+                    $"Impossible de réduire la capacité à {capacity}. " +
+                    $"{ticketsSold} billets ont déjà été vendus."
+                );
+            }
+
+            // Mettre à jour les propriétés
+            Date = date;
+            Capacity = capacity;
+            UnitPrice = unitPrice;
+
+            // Recalculer AvailableTickets
+            AvailableTickets = capacity - ticketsSold;
+
+            if (AvailableTickets == 0 && Status != PerformanceStatus.SoldOut)
+            {
+                Status = PerformanceStatus.SoldOut;     // Sold out si l'organisateur retire de la vente les dernières places dispo
+            }
+            else if (AvailableTickets > 0 && Status == PerformanceStatus.SoldOut)
+            {
+                Status = PerformanceStatus.Scheduled;  // Retour à Scheduled si places libérées
+            }
+
+            // Mettre à jour le timestamp pour le champs UpdatedAt
+            UpdateTimestamp();
         }
 
 

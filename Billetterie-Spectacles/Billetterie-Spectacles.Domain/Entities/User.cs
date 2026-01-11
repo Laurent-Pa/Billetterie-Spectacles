@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace Billetterie_Spectacles.Domain.Entities
 {
-    public class User
+    public partial class User
     {
         public int UserId { get; set; }
         public string Name { get; set; } = string.Empty;
@@ -87,7 +87,7 @@ namespace Billetterie_Spectacles.Domain.Entities
         private static void ValidateEmailFormat(string email)
         {
             // Regex simple pour validation email
-            var regex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+            var regex = MyEmailRegex();
             if (!regex.IsMatch(email))
                 throw new ArgumentException("Le format de l'email est invalide.", nameof(email));
         }
@@ -115,7 +115,7 @@ namespace Billetterie_Spectacles.Domain.Entities
             {
                 ValidatePhoneFormat(phone);
                 // Nettoyer le numéro (enlever espaces, tirets, parenthèses)
-                Phone = Regex.Replace(phone, @"[\s\-\(\)\.]", "");
+                Phone = MyPhoneWithoutDotAndSlashRegex().Replace(phone, "");
             }
             UpdateTimestamp();
         }
@@ -123,17 +123,17 @@ namespace Billetterie_Spectacles.Domain.Entities
         private static void ValidatePhoneFormat(string phone)
         {
             // Nettoyer le numéro pour validation
-            var cleaned = Regex.Replace(phone, @"[\s\-\(\)\.]", "");
+            string cleaned = MyPhoneWithoutDotAndSlashRegex().Replace(phone, "");
 
             // Accepte les formats français : 0612345678 ou +33612345678
-            var regex = new Regex(@"^(\+33|0)[1-9]\d{8}$");
+            Regex regex = MyfrenchPhoneNumberRegex();
             if (!regex.IsMatch(cleaned))
                 throw new ArgumentException("Le format du numéro de téléphone est invalide.", nameof(phone));
         }
 
         private static void ValidateRole(UserRole role)
         {
-            if (!Enum.IsDefined(typeof(UserRole), role))
+            if (!Enum.IsDefined(role))
                 throw new ArgumentException("Le rôle spécifié n'est pas valide.", nameof(role));
         }
 
@@ -148,6 +148,59 @@ namespace Billetterie_Spectacles.Domain.Entities
         {
             UpdatedAt = DateTime.UtcNow;
         }
+
+        // <summary>
+        /// Met à jour les informations du profil utilisateur
+        /// </summary>
+        public void UpdateProfile(string name, string surname, string? phone)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Le nom ne peut pas être vide.", nameof(name));
+
+            if (string.IsNullOrWhiteSpace(surname))
+                throw new ArgumentException("Le prénom ne peut pas être vide.", nameof(surname));
+
+            Name = name.Trim();
+            Surname = surname.Trim();
+            Phone = phone?.Trim();
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// Change le mot de passe de l'utilisateur
+        /// Le mot de passe doit être déjà hashé avant l'appel
+        /// </summary>
+        public void ChangePassword(string newHashedPassword)
+        {
+            if (string.IsNullOrWhiteSpace(newHashedPassword))
+                throw new ArgumentException("Le mot de passe hashé ne peut pas être vide.", nameof(newHashedPassword));
+
+            Password = newHashedPassword;
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// Change l'email de l'utilisateur
+        /// </summary>
+        public void ChangeEmail(string newEmail)
+        {
+            if (string.IsNullOrWhiteSpace(newEmail))
+                throw new ArgumentException("L'email ne peut pas être vide.", nameof(newEmail));
+
+            if (!newEmail.Contains('@'))
+                throw new ArgumentException("Format d'email invalide.", nameof(newEmail));
+
+            Email = newEmail.ToLower().Trim();
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
+        private static partial Regex MyEmailRegex();
+
+        [GeneratedRegex(@"^(\+33|0)[1-9]\d{8}$")]
+        private static partial Regex MyfrenchPhoneNumberRegex();
+        [GeneratedRegex(@"[\s\-\(\)\.]")]
+        private static partial Regex MyPhoneWithoutDotAndSlashRegex();
         #endregion
     }
 }

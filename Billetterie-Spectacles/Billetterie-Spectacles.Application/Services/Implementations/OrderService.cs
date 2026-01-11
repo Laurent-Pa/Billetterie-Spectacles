@@ -1,0 +1,269 @@
+﻿using Billetterie_Spectacles.Application.DTO.Request;
+using Billetterie_Spectacles.Application.DTO.Response;
+using Billetterie_Spectacles.Application.Interfaces;
+using Billetterie_Spectacles.Application.Mappings;
+using Billetterie_Spectacles.Application.Services.Interfaces;
+using Billetterie_Spectacles.Domain.Entities;
+using Billetterie_Spectacles.Domain.Enums;
+using Billetterie_Spectacles.Domain.Exceptions;
+
+namespace Billetterie_Spectacles.Application.Services.Implementations
+{
+    /// <summary>
+    /// Implémentation du service de gestion des commandes
+    /// </summary>
+    public class OrderService(
+        IOrderRepository _orderRepository,                  // CRUD Order
+        IPerformanceRepository _performanceRepository,      // Vérifier la dispo et réserver des places
+        ITicketRepository _ticketRepository,                // Créer et gérer les tickets
+        IUserRepository _userRepository) : IOrderService    // Vérifier que l'user existe
+    {
+        #region Consultation
+
+        public async Task<OrderDto?> GetByIdAsync(int orderId)
+        {
+            Order? order = await _orderRepository.GetByIdAsync(orderId);
+            return order != null ? OrderMapper.EntityToDto(order) : null;
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetAllAsync()
+        {
+            IEnumerable<Order> orders = await _orderRepository.GetAllAsync();
+            return orders.Select(OrderMapper.EntityToDto);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetByUserIdAsync(int userId)
+        {
+            IEnumerable<Order> orders = await _orderRepository.GetByUserIdAsync(userId);
+            return orders.Select(OrderMapper.EntityToDto);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetByStatusAsync(OrderStatus status)
+        {
+            IEnumerable<Order> orders = await _orderRepository.GetByStatusAsync(status);
+            return orders.Select(OrderMapper.EntityToDto);
+        }
+
+        public async Task<OrderDto?> GetWithTicketsAsync(int orderId)
+        {
+            Order? order = await _orderRepository.GetWithTicketsAsync(orderId);
+            return order != null ? OrderMapper.EntityToDto(order) : null;
+        }
+
+        public async Task<decimal> GetTotalRevenueAsync()
+        {
+            return await _orderRepository.GetTotalRevenueAsync();
+        }
+
+        public async Task<decimal> GetTotalRevenueByUserAsync(int userId)
+        {
+            return await _orderRepository.GetTotalRevenueByUserAsync(userId);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetRecentOrdersAsync(int count = 10)
+        {
+            IEnumerable<Order> orders = await _orderRepository.GetRecentOrdersAsync(count);
+            return orders.Select(OrderMapper.EntityToDto);
+        }
+
+        #endregion
+
+        #region Création et gestion
+
+        public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto, int userId)
+        {
+            // Validation : Vérifier que l'utilisateur existe
+            User? user = await _userRepository.GetByIdAsync(userId) 
+                ?? throw new NotFoundException($"Utilisateur avec l'ID {userId} introuvable.");
+
+            // Validation : Au moins un item dans la commande
+            if (dto.Items == null || dto.Items.Count == 0)
+            {
+                throw new DomainException("La commande doit contenir au moins un billet.");
+            }
+
+            decimal totalPrice = 0;
+            List<Ticket> ticketsToCreate = new();
+            List<Performance> performancesToUpdate = new();
+
+            // Pour chaque item dans la commande
+            foreach (OrderItemDto item in dto.Items)
+            {
+                // 1. Récupérer la performance
+                Performance? performance = await _performanceRepository.GetByIdAsync(item.PerformanceId) 
+                    ?? throw new NotFoundException($"Performance avec l'ID {item.PerformanceId} introuvable.");
+
+                // 2. Validation : Quantité positive
+                if (item.Quantity <= 0)
+                {
+                    throw new DomainException($"La quantité pour la performance {item.PerformanceId} doit être positive.");
+                }
+
+                // 3. Vérifier la disponibilité
+                if (performance.AvailableTickets < item.Quantity)
+                {
+                    throw new DomainException(
+                        $"Pas assez de places pour la performance {item.PerformanceId}. " +
+                        $"Disponibles : {performance.AvailableTickets}, Demandées : {item.Quantity}"
+                    );
+                }
+
+                // 4. Réserver les places (diminue AvailableTickets, gère SoldOut)
+                performance.BookTickets(item.Quantity);
+                performancesToUpdate.Add(performance);
+
+                // 5. Créer les tickets individuels (quantity fois)
+                for (int i = 0; i < item.Quantity; i++)
+                {
+                    Ticket ticket = new(
+                        price: performance.UnitPrice,  // Prix au moment de l'achat
+                        performanceId: performance.PerformanceId
+                    );
+                    ticketsToCreate.Add(ticket);
+                    totalPrice += performance.UnitPrice;
+                }
+            }
+
+            // Créer l'entité Order
+            Order order = new(
+                userId: userId,
+                totalPrice: totalPrice
+            );
+
+            // Sauvegarder la commande
+            Order? createdOrder = await _orderRepository.AddAsync(order) 
+                ?? throw new DomainException("Erreur lors de la création de la commande.");
+
+            // Associer les tickets à la commande et sauvegarder
+            foreach (Ticket ticket in ticketsToCreate)
+            {
+                ticket.OrderId = createdOrder.OrderId;
+                await _ticketRepository.AddAsync(ticket);
+            }
+
+            // Mettre à jour les performances (places réservées)
+            foreach (Performance performance in performancesToUpdate)
+            {
+                await _performanceRepository.UpdateAsync(performance);
+            }
+
+            // TODO Plus tard : Créer une transaction pour garantir atomicité
+            // (tout réussit ou tout échoue)
+
+            return OrderMapper.EntityToDto(createdOrder);
+        }
+
+        public async Task<OrderDto> CancelOrderAsync(int orderId, int currentUserId)
+        {
+            // Récupérer la commande avec ses tickets
+            Order? order = await _orderRepository.GetWithTicketsAsync(orderId) 
+                ?? throw new NotFoundException($"Commande avec l'ID {orderId} introuvable.");
+
+            // Vérifier les permissions (seul le propriétaire peut annuler)
+            if (order.UserId != currentUserId)
+            {
+                throw new ForbiddenException("Vous n'avez pas la permission d'annuler cette commande.");
+            }
+
+            // Vérifier que la commande est annulable
+            if (order.Status == OrderStatus.Cancelled)
+            {
+                throw new DomainException("Cette commande est déjà annulée.");
+            }
+
+            if (order.Status == OrderStatus.Refunded)
+            {
+                throw new DomainException("Impossible d'annuler une commande remboursée.");
+            }
+
+            // Annuler la commande
+            order.Cancel();
+            await _orderRepository.UpdateAsync(order);
+
+            // Annuler tous les tickets et libérer les places
+            IEnumerable<Ticket> tickets = await _ticketRepository.GetByOrderIdAsync(orderId);
+
+            // Grouper les tickets par performance pour libérer en une seule fois
+            var ticketsByPerformance = tickets.GroupBy(t => t.PerformanceId);
+
+            foreach (var group in ticketsByPerformance)
+            {
+                int performanceId = group.Key;
+                int ticketCount = group.Count();
+
+                // Annuler les tickets
+                foreach (Ticket ticket in group)
+                {
+                    ticket.Cancel();
+                    await _ticketRepository.UpdateAsync(ticket);
+                }
+
+                // Libérer les places (augmente AvailableTickets, gère retour à Scheduled)
+                Performance? performance = await _performanceRepository.GetByIdAsync(performanceId);
+                if (performance != null)
+                {
+                    performance.ReleaseTickets(ticketCount);
+                    await _performanceRepository.UpdateAsync(performance);
+                }
+            }
+
+            return OrderMapper.EntityToDto(order);
+        }
+
+        public async Task<OrderDto> ChangeOrderStatusAsync(int orderId, OrderStatus newStatus, int currentUserId, bool isAdmin)
+        {
+            // Récupérer la commande
+            Order? order = await _orderRepository.GetByIdAsync(orderId) 
+                ?? throw new NotFoundException($"Commande avec l'ID {orderId} introuvable.");
+
+            // Vérifier les permissions
+            // Seul l'admin ou le propriétaire peuvent changer le statut
+            if (!isAdmin && order.UserId != currentUserId)
+            {
+                throw new ForbiddenException("Vous n'avez pas la permission de modifier cette commande.");
+            }
+
+            // Vérifier que le changement est valide
+            if (order.Status == newStatus)
+            {
+                throw new DomainException($"La commande est déjà au statut {newStatus}.");
+            }
+
+            // Changer le statut selon la transition
+            switch (newStatus)
+            {
+                case OrderStatus.Paid:
+                    if (order.Status != OrderStatus.Pending)
+                    {
+                        throw new DomainException("Seules les commandes en attente peuvent être marquées comme payées.");
+                    }
+                    order.MarkAsPaid();
+                    break;
+
+                case OrderStatus.Cancelled:
+                    // Utiliser CancelOrderAsync pour annuler proprement
+                    return await CancelOrderAsync(orderId, currentUserId);
+
+                case OrderStatus.Refunded:
+                    if (order.Status != OrderStatus.Paid)
+                    {
+                        throw new DomainException("Seules les commandes payées peuvent être remboursées.");
+                    }
+                    order.Refund();
+                    break;
+
+                case OrderStatus.Pending:
+                    throw new DomainException("Impossible de repasser une commande en attente.");
+
+                default:
+                    throw new ArgumentException($"Statut invalide : {newStatus}");
+            }
+
+            await _orderRepository.UpdateAsync(order);
+
+            return OrderMapper.EntityToDto(order);
+        }
+
+        #endregion
+    }
+}

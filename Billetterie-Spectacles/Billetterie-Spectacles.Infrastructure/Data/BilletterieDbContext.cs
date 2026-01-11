@@ -247,6 +247,10 @@ namespace Billetterie_Spectacles.Infrastructure.Data
                     .HasColumnName("created_at")
                     .IsRequired();
 
+                entity.Property(o => o.UpdatedAt)
+                    .HasColumnName("updated_at")
+                    .IsRequired();
+
                 // Ignorer la propriété Tickets car c'est une collection en lecture seule
                 // La relation est configurée via la propriété privée _tickets
                 entity.Ignore(o => o.Tickets);
@@ -285,6 +289,13 @@ namespace Billetterie_Spectacles.Infrastructure.Data
                     .HasColumnName("performance_id")
                     .IsRequired();
 
+                entity.Property(t => t.CreatedAt)
+                    .HasColumnName("created_at")
+                    .IsRequired();
+
+                entity.Property(t => t.UpdatedAt)
+                    .HasColumnName("updated_at")
+                    .IsRequired();
                 // Relations déjà configurées via Performance et Order
             });
         }

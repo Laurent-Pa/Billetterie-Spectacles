@@ -9,6 +9,7 @@
         string Status,  // conversion de l'enum dans le mapping --> Status: order.Status.ToString()
         DateTime Date,  // pour rappel, c'est la date de création de la commande, pas du spectacle
         decimal TotalPrice, // stocké dans la BDD, immuable même si le prix d'un billet du même spectacle évolue
-        int UserId
+        int UserId,
+        DateTime UpdatedAt // pour suivi de màj de la commande (pending->paid ou autre)
     );
 }

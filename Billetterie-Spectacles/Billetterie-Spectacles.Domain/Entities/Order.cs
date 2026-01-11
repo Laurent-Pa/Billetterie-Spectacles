@@ -10,6 +10,7 @@ namespace Billetterie_Spectacles.Domain.Entities
         public DateTime Date { get; set; } = DateTime.UtcNow;
         public decimal TotalPrice { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // Clé étrangère : Commande passée par un utilisateur (Client)
         public int UserId { get; set; }
@@ -24,7 +25,8 @@ namespace Billetterie_Spectacles.Domain.Entities
         #region Constructors
         private Order() { }         // Constructeur privé pour EF Core
 
-        public Order(int userId)         // Constructeur
+        // Constructeur #1 : Sans totalPrice (pour flux avec AddTicket)
+        public Order(int userId) 
         {
             if (userId <= 0)
                 throw new ArgumentException("L'ID utilisateur doit être positif.", nameof(userId));
@@ -35,10 +37,28 @@ namespace Billetterie_Spectacles.Domain.Entities
             CreatedAt = DateTime.UtcNow;
             TotalPrice = 0;
         }
+
+        // Constructeur #2 : Avec totalPrice (pour flux avec calcul préalable)
+        public Order(int userId, decimal totalPrice)
+        {
+            if (userId <= 0)
+                throw new ArgumentException("L'ID utilisateur doit être positif.", nameof(userId));
+
+            if (totalPrice < 0)
+                throw new ArgumentException("Le prix total ne peut pas être négatif.", nameof(totalPrice));
+
+            UserId = userId;
+            TotalPrice = totalPrice;  // ← Prix déjà calculé
+            Status = OrderStatus.Pending;
+            Date = DateTime.UtcNow;
+            CreatedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
+        }
+
         #endregion
 
         #region Methods
-        public void AddTicket(Ticket ticket)
+        public void AddTicket(Ticket ticket) // Utilisé par constructeur #1
         {
             if (Status != OrderStatus.Pending)
                 throw new DomainException("Impossible d'ajouter un ticket à une commande qui n'est pas en attente.");
@@ -55,6 +75,9 @@ namespace Billetterie_Spectacles.Domain.Entities
             TotalPrice = _tickets.Sum(t => t.Price);
         }
 
+        /// <summary>
+        /// Marque la commande comme payée
+        /// </summary>
         public void MarkAsPaid()
         {
             if (Status != OrderStatus.Pending)
@@ -65,27 +88,35 @@ namespace Billetterie_Spectacles.Domain.Entities
 
             Status = OrderStatus.Paid;
 
-            foreach (var ticket in _tickets)
+            foreach (Ticket ticket in _tickets)
             {
                 ticket.MarkAsPaid();
             }
+
+            Status = OrderStatus.Paid;
+            UpdatedAt = DateTime.UtcNow;
         }
 
 
+        // <summary>
+        /// Annule la commande
+        /// </summary>
         public void Cancel()
         {
-            if (Status == OrderStatus.Paid)
-                throw new DomainException("Une commande payée ne peut pas être annulée. Utilisez Refund().");
+            if (Status == OrderStatus.Cancelled)
+                throw new DomainException("La commande est déjà annulée.");
+
+            if (Status == OrderStatus.Refunded)
+                throw new DomainException("Impossible d'annuler une commande remboursée.");
 
             Status = OrderStatus.Cancelled;
-
-            foreach (var ticket in _tickets)
-            {
-                ticket.Cancel();
-            }
+            UpdatedAt = DateTime.UtcNow;
         }
 
 
+        /// <summary>
+        /// Rembourse la commande
+        /// </summary>
         public void Refund()
         {
             if (Status != OrderStatus.Paid)
@@ -97,6 +128,9 @@ namespace Billetterie_Spectacles.Domain.Entities
             {
                 ticket.Cancel();
             }
+
+            Status = OrderStatus.Refunded;
+            UpdatedAt = DateTime.UtcNow;
         }
         #endregion
     }
