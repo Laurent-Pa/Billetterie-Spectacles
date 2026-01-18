@@ -82,20 +82,14 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
 
         #region Création et modification
 
-        public async Task<PerformanceDto> CreatePerformanceAsync(CreatePerformanceDto dto, int currentUserId, bool isAdmin)
+        public async Task<PerformanceDto> CreatePerformanceAsync(int spectacleId, CreatePerformanceDto dto)
         {
             // Vérifier que le spectacle existe
-            Spectacle? spectacle = await _spectacleRepository.GetByIdAsync(dto.SpectacleId) 
-                ?? throw new NotFoundException($"Spectacle avec l'ID {dto.SpectacleId} introuvable.");
-
-            // Vérifier les permissions via le spectacle parent
-            if (!isAdmin && spectacle.CreatedByUserId != currentUserId)
-            {
-                throw new ForbiddenException("Vous n'avez pas la permission de créer des performances pour ce spectacle.");
-            }
+            Spectacle? spectacle = await _spectacleRepository.GetByIdAsync(spectacleId) 
+                ?? throw new NotFoundException($"Spectacle avec l'ID {spectacleId} introuvable.");
 
             // Créer l'entité via le mapper
-            Performance performance = PerformanceMapper.CreateDtoToEntity(dto);
+            Performance performance = PerformanceMapper.CreateDtoToEntity(spectacleId, dto);
 
             // Sauvegarder
             Performance? createdPerformance = await _performanceRepository.AddAsync(performance);
@@ -105,18 +99,11 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                 : PerformanceMapper.EntityToDto(createdPerformance);
         }
 
-        public async Task<PerformanceDto> UpdatePerformanceAsync(int performanceId, UpdatePerformanceDto dto, int currentUserId, bool isAdmin)
+        public async Task<PerformanceDto> UpdatePerformanceAsync(int performanceId, UpdatePerformanceDto dto)
         {
             // Récupérer la performance
             Performance? performance = await _performanceRepository.GetByIdAsync(performanceId) 
                 ?? throw new NotFoundException($"Performance avec l'ID {performanceId} introuvable.");
-
-            // Vérifier les permissions via le spectacle parent
-            Spectacle? spectacle = await _spectacleRepository.GetByIdAsync(performance.SpectacleId) ?? throw new NotFoundException($"Spectacle avec l'ID {performance.SpectacleId} introuvable.");
-            if (!isAdmin && spectacle.CreatedByUserId != currentUserId)
-            {
-                throw new ForbiddenException("Vous n'avez pas la permission de modifier cette performance.");
-            }
 
             // Si on modifie la capacité, vérifier qu'on ne descend pas sous les billets vendus
             int ticketsSold = await _ticketRepository.CountByPerformanceIdAsync(performanceId);
@@ -178,7 +165,7 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             return PerformanceMapper.EntityToDto(cancelledPerformance);
         }
 
-        public async Task<bool> DeletePerformanceAsync(int performanceId, int currentUserId, bool isAdmin)
+        public async Task<bool> DeletePerformanceAsync(int performanceId)
         {
             // Récupérer la performance
             Performance? performance = await _performanceRepository.GetByIdAsync(performanceId);
@@ -191,10 +178,6 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             Spectacle? spectacle = await _spectacleRepository.GetByIdAsync(performance.SpectacleId) 
                 ?? throw new NotFoundException($"Spectacle avec l'ID {performance.SpectacleId} introuvable.");
 
-            if (!isAdmin && spectacle.CreatedByUserId != currentUserId)
-            {
-                throw new ForbiddenException("Vous n'avez pas la permission de supprimer cette performance.");
-            }
 
             // Vérifier qu'il n'y a pas de billets vendus
             int ticketsSold = await _ticketRepository.CountByPerformanceIdAsync(performanceId);

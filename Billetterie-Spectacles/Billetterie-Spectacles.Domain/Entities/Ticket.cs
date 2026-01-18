@@ -7,13 +7,13 @@ namespace Billetterie_Spectacles.Domain.Entities
     {
         public int TicketId { get; set; }
         public TicketStatus Status { get; private set; } = TicketStatus.Reserved;
-        public decimal Price { get; set; }
+        public decimal UnitPrice { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // Clés étrangères
         public int OrderId { get; set; }
         public int PerformanceId { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // Propriétés de navigation pour faciliter les requetes avec EF Core
         public Order Order { get; set; } = null!;
@@ -23,17 +23,19 @@ namespace Billetterie_Spectacles.Domain.Entities
 
         private Ticket() { }
 
-        public Ticket(int performanceId, decimal price)
+        public Ticket(int performanceId, decimal unitPrice)
         {
             if (performanceId <= 0)
                 throw new ArgumentException("L'ID de la performance doit être positif.", nameof(performanceId));
 
-            if (price <= 0)
-                throw new ArgumentException("Le prix doit être strictement positif.", nameof(price));
+            if (unitPrice <= 0)
+                throw new ArgumentException("Le prix doit être strictement positif.", nameof(unitPrice));
 
             PerformanceId = performanceId;
-            Price = price;
+            UnitPrice = unitPrice;
             Status = TicketStatus.Reserved;
+            CreatedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
         }
         #endregion
 

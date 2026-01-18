@@ -16,7 +16,9 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
         IOrderRepository _orderRepository,                  // CRUD Order
         IPerformanceRepository _performanceRepository,      // Vérifier la dispo et réserver des places
         ITicketRepository _ticketRepository,                // Créer et gérer les tickets
-        IUserRepository _userRepository) : IOrderService    // Vérifier que l'user existe
+        IUserRepository _userRepository,                     // Vérifier que l'user existe
+        IPaymentService _paymentService
+        ): IOrderService
     {
         #region Consultation
 
@@ -29,6 +31,20 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
         public async Task<IEnumerable<OrderDto>> GetAllAsync()
         {
             IEnumerable<Order> orders = await _orderRepository.GetAllAsync();
+            return orders.Select(OrderMapper.EntityToDto);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetAllWithFiltersAsync(
+            int? userId = null,
+            int? performanceId = null,
+            OrderStatus? orderStatus = null)
+        {
+            IEnumerable<Order> orders = await _orderRepository.GetAllWithFiltersAsync(
+                userId: userId,
+                performanceId: performanceId,
+                orderStatus: orderStatus
+            );
+
             return orders.Select(OrderMapper.EntityToDto);
         }
 
@@ -86,20 +102,17 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             List<Ticket> ticketsToCreate = new();
             List<Performance> performancesToUpdate = new();
 
-            // Pour chaque item dans la commande
+            // === PHASE 2 : VÉRIFICATIONS ET RÉSERVATIONS TEMPORAIRES ===
             foreach (OrderItemDto item in dto.Items)
             {
-                // 1. Récupérer la performance
-                Performance? performance = await _performanceRepository.GetByIdAsync(item.PerformanceId) 
+                Performance? performance = await _performanceRepository.GetByIdAsync(item.PerformanceId)
                     ?? throw new NotFoundException($"Performance avec l'ID {item.PerformanceId} introuvable.");
 
-                // 2. Validation : Quantité positive
                 if (item.Quantity <= 0)
                 {
                     throw new DomainException($"La quantité pour la performance {item.PerformanceId} doit être positive.");
                 }
 
-                // 3. Vérifier la disponibilité
                 if (performance.AvailableTickets < item.Quantity)
                 {
                     throw new DomainException(
@@ -108,15 +121,15 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                     );
                 }
 
-                // 4. Réserver les places (diminue AvailableTickets, gère SoldOut)
+                // Réserver temporairement
                 performance.BookTickets(item.Quantity);
                 performancesToUpdate.Add(performance);
 
-                // 5. Créer les tickets individuels (quantity fois)
+                // Préparer les tickets (sans les sauvegarder encore)
                 for (int i = 0; i < item.Quantity; i++)
                 {
                     Ticket ticket = new(
-                        price: performance.UnitPrice,  // Prix au moment de l'achat
+                        unitPrice: performance.UnitPrice,
                         performanceId: performance.PerformanceId
                     );
                     ticketsToCreate.Add(ticket);
@@ -124,33 +137,56 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                 }
             }
 
-            // Créer l'entité Order
-            Order order = new(
-                userId: userId,
-                totalPrice: totalPrice
+            // === PHASE 3 : TRAITEMENT DU PAIEMENT ===
+            var paymentResult = await _paymentService.ProcessPaymentAsync(
+                totalPrice: totalPrice,
+                userId: userId
             );
 
-            // Sauvegarder la commande
-            Order? createdOrder = await _orderRepository.AddAsync(order) 
+            if (!paymentResult.IsSuccess)
+            {
+                // Paiement échoué : libérer les places
+                foreach (Performance performance in performancesToUpdate)
+                {
+                    performance.ReleaseTickets(
+                        ticketsToCreate.Count(t => t.PerformanceId == performance.PerformanceId)
+                    );
+                    await _performanceRepository.UpdateAsync(performance);
+                }
+
+                throw new DomainException($"Paiement échoué : {paymentResult.ErrorMessage}");
+            }
+
+            // === PHASE 4 : PAIEMENT RÉUSSI - CRÉER TOUT D'UN COUP ===
+
+            // Créer l'order avec statut Pending
+            Order order = new(userId: userId, totalPrice: totalPrice);
+
+            // Confirmer avant de sauvegarder
+            order.ConfirmPayment(paymentResult.PaymentIntentId!);
+
+            // Sauvegarder l'order (déjà confirmé)
+            Order? createdOrder = await _orderRepository.AddAsync(order)
                 ?? throw new DomainException("Erreur lors de la création de la commande.");
 
-            // Associer les tickets à la commande et sauvegarder
+            // On crée tous les tickets d'un coup
             foreach (Ticket ticket in ticketsToCreate)
             {
                 ticket.OrderId = createdOrder.OrderId;
+
+                // On évite d'appeler SaveChanges entre chaque ticket
                 await _ticketRepository.AddAsync(ticket);
             }
 
-            // Mettre à jour les performances (places réservées)
-            foreach (Performance performance in performancesToUpdate)
-            {
-                await _performanceRepository.UpdateAsync(performance);
-            }
+            //// Mettre à jour les performances (places définitivement réservées)
+            //foreach (Performance performance in performancesToUpdate)
+            //{
+            //    await _performanceRepository.UpdateAsync(performance);
+            //}
 
-            // TODO Plus tard : Créer une transaction pour garantir atomicité
-            // (tout réussit ou tout échoue)
-
-            return OrderMapper.EntityToDto(createdOrder);
+            // Recharger l'order avec ses tickets pour le retour
+            Order? orderWithTickets = await _orderRepository.GetWithTicketsAsync(createdOrder.OrderId);
+            return OrderMapper.EntityToDto(orderWithTickets!);
         }
 
         public async Task<OrderDto> CancelOrderAsync(int orderId, int currentUserId)
@@ -184,9 +220,9 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             IEnumerable<Ticket> tickets = await _ticketRepository.GetByOrderIdAsync(orderId);
 
             // Grouper les tickets par performance pour libérer en une seule fois
-            var ticketsByPerformance = tickets.GroupBy(t => t.PerformanceId);
+            IEnumerable<IGrouping<int, Ticket>> ticketsByPerformance = tickets.GroupBy(t => t.PerformanceId);
 
-            foreach (var group in ticketsByPerformance)
+            foreach (IGrouping<int, Ticket> group in ticketsByPerformance)
             {
                 int performanceId = group.Key;
                 int ticketCount = group.Count();
@@ -232,7 +268,7 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             // Changer le statut selon la transition
             switch (newStatus)
             {
-                case OrderStatus.Paid:
+                case OrderStatus.PaymentConfirmed:
                     if (order.Status != OrderStatus.Pending)
                     {
                         throw new DomainException("Seules les commandes en attente peuvent être marquées comme payées.");
@@ -245,7 +281,7 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                     return await CancelOrderAsync(orderId, currentUserId);
 
                 case OrderStatus.Refunded:
-                    if (order.Status != OrderStatus.Paid)
+                    if (order.Status != OrderStatus.PaymentConfirmed)
                     {
                         throw new DomainException("Seules les commandes payées peuvent être remboursées.");
                     }

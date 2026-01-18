@@ -28,32 +28,52 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             return spectacles.Select(SpectacleMapper.EntityToDto);
         }
 
-        public async Task<IEnumerable<SpectacleDto>> GetByCategoryAsync(SpectacleCategory category)
-        {
-            IEnumerable<Spectacle> spectacles = await _spectacleRepository.GetByCategoryAsync(category);
-            return spectacles.Select(SpectacleMapper.EntityToDto);
-        }
-
-        public async Task<IEnumerable<SpectacleDto>> SearchByNameAsync(string searchTerm)
-        {
-            if (string.IsNullOrWhiteSpace(searchTerm))
-            {
-                throw new ArgumentException("Le terme de recherche ne peut pas être vide.", nameof(searchTerm));
-            }
-
-            IEnumerable<Spectacle> spectacles = await _spectacleRepository.SearchByNameAsync(searchTerm);
-            return spectacles.Select(SpectacleMapper.EntityToDto);
-        }
-
         public async Task<SpectacleDto?> GetWithPerformancesAsync(int spectacleId)
         {
             Spectacle? spectacle = await _spectacleRepository.GetWithPerformancesAsync(spectacleId);
-            return spectacle != null ? SpectacleMapper.EntityToDto(spectacle) : null;
+            return spectacle != null ? SpectacleMapper.EntityToDtoWithPerformances(spectacle) : null;
         }
 
         public async Task<int> CountByCategoryAsync(SpectacleCategory category)
         {
             return await _spectacleRepository.CountByCategoryAsync(category);
+        }
+
+        public async Task<IEnumerable<SpectacleDto>> SearchAsync(string? name, SpectacleCategory? category, int? minDuration, int? maxDuration)
+        {
+            // Récupérer tous les spectacles depuis le repository
+            IEnumerable<Spectacle> spectacles = await _spectacleRepository.GetAllAsync();
+
+            // Appliquer les filtres un par un
+            IEnumerable<Spectacle> filtered = spectacles;
+
+            // Filtre par nom (recherche partielle, insensible à la casse)
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                filtered = filtered.Where(s =>
+                    s.Name.Contains(name, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Filtre par catégorie
+            if (category.HasValue)
+            {
+                filtered = filtered.Where(s => s.Category == category.Value);
+            }
+
+            // Filtre par durée minimale
+            if (minDuration.HasValue)
+            {
+                filtered = filtered.Where(s => s.Duration >= minDuration.Value);
+            }
+
+            // Filtre par durée maximale
+            if (maxDuration.HasValue)
+            {
+                filtered = filtered.Where(s => s.Duration <= maxDuration.Value);
+            }
+
+            // Convertir en DTOs
+            return filtered.Select(s => SpectacleMapper.EntityToDto(s));
         }
 
         #endregion
@@ -79,17 +99,11 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                 : SpectacleMapper.EntityToDto(createdSpectacle);
         }
 
-        public async Task<SpectacleDto> UpdateSpectacleAsync(int spectacleId, UpdateSpectacleDto dto, int currentUserId, bool isAdmin)
+        public async Task<SpectacleDto> UpdateSpectacleAsync(int spectacleId, UpdateSpectacleDto dto)
         {
             // Récupérer le spectacle
-            Spectacle? spectacle = await _spectacleRepository.GetByIdAsync(spectacleId) 
+            Spectacle? spectacle = await _spectacleRepository.GetByIdAsync(spectacleId)
                 ?? throw new NotFoundException($"Spectacle avec l'ID {spectacleId} introuvable.");
-
-            // Vérification des permissions
-            if (!isAdmin && spectacle.CreatedByUserId != currentUserId)
-            {
-                throw new ForbiddenException("Vous n'avez pas la permission de modifier ce spectacle.");
-            }
 
             // Mettre à jour via le mapper
             SpectacleMapper.UpdateEntity(spectacle, dto);
@@ -100,19 +114,13 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             return SpectacleMapper.EntityToDto(updatedSpectacle);
         }
 
-        public async Task<bool> DeleteSpectacleAsync(int spectacleId, int currentUserId, bool isAdmin)
+        public async Task<bool> DeleteSpectacleAsync(int spectacleId)
         {
             // Récupérer le spectacle
             Spectacle? spectacle = await _spectacleRepository.GetByIdAsync(spectacleId);
             if (spectacle == null)
             {
                 return false;  // Spectacle n'existe pas
-            }
-
-            // Vérification des permissions
-            if (!isAdmin && spectacle.CreatedByUserId != currentUserId)
-            {
-                throw new ForbiddenException("Vous n'avez pas la permission de supprimer ce spectacle.");
             }
 
             // Supprimer

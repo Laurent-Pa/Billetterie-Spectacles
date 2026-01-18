@@ -15,14 +15,22 @@ namespace Billetterie_Spectacles.Application.Mappings
         /// </summary>
         public static TicketDto EntityToDto(Ticket ticket)
         {
+            // Mapper la performance uniquement si elle est chargée
+            PerformanceDto? performance = null;
+            if (ticket.Performance != null)
+            {
+                performance = PerformanceMapper.EntityToDto(ticket.Performance);
+            }
+
             return new TicketDto(
                 Id: ticket.TicketId,
                 Status: ticket.Status.ToString(),  // Enum → String
-                Price: ticket.Price,
+                UnitPrice: ticket.UnitPrice,
                 OrderId: ticket.OrderId,
                 PerformanceId: ticket.PerformanceId,
                 CreatedAt: ticket.CreatedAt,
-                UpdatedAt: ticket.UpdatedAt
+                UpdatedAt: ticket.UpdatedAt,
+                Performance: performance
             );
         }
     }

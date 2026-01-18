@@ -6,9 +6,9 @@ namespace Billetterie_Spectacles.Domain.Entities
     public class Order
     {
         public int OrderId { get; set; }
-        public OrderStatus Status { get; private set; } = OrderStatus.Pending;
-        public DateTime Date { get; set; } = DateTime.UtcNow;
         public decimal TotalPrice { get; set; }
+        public OrderStatus Status { get; private set; } = OrderStatus.Pending;
+        public string? PaymentIntentId { get; private set; }  // ID Stripe pour le paiement
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
@@ -19,8 +19,11 @@ namespace Billetterie_Spectacles.Domain.Entities
         public User User { get; set; } = null!;
 
         // Relation : Une commande contient plusieurs tickets
-        private readonly List<Ticket> _tickets = new();
-        public IReadOnlyCollection<Ticket> Tickets => _tickets.AsReadOnly();
+
+        // Commenté pour tester si readonly pose pb avec EF Core lors de la création d'une commande
+        //private readonly List<Ticket> _tickets = new();
+        //public IReadOnlyCollection<Ticket> Tickets => _tickets.AsReadOnly();
+        public ICollection<Ticket> Tickets { get; private set; } = new List<Ticket>(); // remplace le code commenté juste au-dessus
 
         #region Constructors
         private Order() { }         // Constructeur privé pour EF Core
@@ -33,7 +36,6 @@ namespace Billetterie_Spectacles.Domain.Entities
 
             UserId = userId;
             Status = OrderStatus.Pending;
-            Date = DateTime.UtcNow;
             CreatedAt = DateTime.UtcNow;
             TotalPrice = 0;
         }
@@ -50,7 +52,6 @@ namespace Billetterie_Spectacles.Domain.Entities
             UserId = userId;
             TotalPrice = totalPrice;  // ← Prix déjà calculé
             Status = OrderStatus.Pending;
-            Date = DateTime.UtcNow;
             CreatedAt = DateTime.UtcNow;
             UpdatedAt = DateTime.UtcNow;
         }
@@ -63,16 +64,16 @@ namespace Billetterie_Spectacles.Domain.Entities
             if (Status != OrderStatus.Pending)
                 throw new DomainException("Impossible d'ajouter un ticket à une commande qui n'est pas en attente.");
 
-            if (ticket.Price <= 0)
+            if (ticket.UnitPrice <= 0)
                 throw new ArgumentException("Le prix du ticket doit être positif.", nameof(ticket));
 
-            _tickets.Add(ticket);
+            Tickets.Add(ticket);
             CalculateTotalPrice();
         }
 
         public void CalculateTotalPrice()
         {
-            TotalPrice = _tickets.Sum(t => t.Price);
+            TotalPrice = Tickets.Sum(t => t.UnitPrice);
         }
 
         /// <summary>
@@ -83,17 +84,17 @@ namespace Billetterie_Spectacles.Domain.Entities
             if (Status != OrderStatus.Pending)
                 throw new DomainException("Seules les commandes en attente peuvent être payées.");
 
-            if (_tickets.Count == 0)
+            if (Tickets.Count == 0)
                 throw new DomainException("Une commande doit contenir au moins un ticket.");
 
-            Status = OrderStatus.Paid;
+            Status = OrderStatus.PaymentConfirmed;
 
-            foreach (Ticket ticket in _tickets)
+            foreach (Ticket ticket in Tickets)
             {
                 ticket.MarkAsPaid();
             }
 
-            Status = OrderStatus.Paid;
+            Status = OrderStatus.PaymentConfirmed;
             UpdatedAt = DateTime.UtcNow;
         }
 
@@ -119,18 +120,38 @@ namespace Billetterie_Spectacles.Domain.Entities
         /// </summary>
         public void Refund()
         {
-            if (Status != OrderStatus.Paid)
+            if (Status != OrderStatus.PaymentConfirmed)
                 throw new DomainException("Seules les commandes payées peuvent être remboursées.");
 
             Status = OrderStatus.Refunded;
 
-            foreach (var ticket in _tickets)
+            foreach (var ticket in Tickets)
             {
                 ticket.Cancel();
             }
 
             Status = OrderStatus.Refunded;
             UpdatedAt = DateTime.UtcNow;
+        }
+
+        // Méthode pour confirmer le paiement
+        public void ConfirmPayment(string paymentIntentId)
+        {
+            if (Status != OrderStatus.Pending)
+            {
+                throw new InvalidOperationException("Seule une commande en attente peut être confirmée");
+            }
+
+            PaymentIntentId = paymentIntentId;
+            Status = OrderStatus.PaymentConfirmed;
+            UpdatedAt = DateTime.Now;
+        }
+
+        // Méthode pour marquer comme échoué
+        public void MarkAsFailed()
+        {
+            Status = OrderStatus.PaymentFailed;
+            UpdatedAt = DateTime.Now;
         }
         #endregion
     }

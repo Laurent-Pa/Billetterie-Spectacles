@@ -13,14 +13,13 @@ namespace Billetterie_Spectacles.Application.Services.Interfaces
         // Consultation
         Task<SpectacleDto?> GetByIdAsync(int spectacleId);
         Task<IEnumerable<SpectacleDto>> GetAllAsync();
-        Task<IEnumerable<SpectacleDto>> GetByCategoryAsync(SpectacleCategory category);
-        Task<IEnumerable<SpectacleDto>> SearchByNameAsync(string searchTerm);
         Task<SpectacleDto?> GetWithPerformancesAsync(int spectacleId);       // Eager Loading
+        Task<IEnumerable<SpectacleDto>> SearchAsync(string? name, SpectacleCategory? category, int? minDuration, int? maxDuration);  // Recherche multi-critères
 
         // Création et modification
         Task<SpectacleDto> CreateSpectacleAsync(CreateSpectacleDto dto, int createdByUserId);   // UserId fournit par Token JWT pour permission
-        Task<SpectacleDto> UpdateSpectacleAsync(int spectacleId, UpdateSpectacleDto dto, int currentUserId, bool isAdmin);   // Crendentials fournis par Token JWT pour permission
-        Task<bool> DeleteSpectacleAsync(int spectacleId, int currentUserId, bool isAdmin);   // Crendentials fournis par Token JWT pour permission
+        Task<SpectacleDto> UpdateSpectacleAsync(int spectacleId, UpdateSpectacleDto dto);   // La validation d'autorisation se fait dans le controller
+        Task<bool> DeleteSpectacleAsync(int spectacleId);   // La validation d'autorisation se fait dans le controller
 
         // Statistiques
         Task<int> CountByCategoryAsync(SpectacleCategory category);

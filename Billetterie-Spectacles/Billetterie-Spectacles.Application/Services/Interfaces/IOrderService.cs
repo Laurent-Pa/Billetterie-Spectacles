@@ -12,8 +12,9 @@ namespace Billetterie_Spectacles.Application.Services.Interfaces
     {
         // Consultation
         Task<OrderDto?> GetByIdAsync(int orderId);
-        Task<IEnumerable<OrderDto>> GetAllAsync();
-        Task<IEnumerable<OrderDto>> GetByUserIdAsync(int userId);
+        Task<IEnumerable<OrderDto>> GetAllAsync();                  // Pour Admin 
+        Task<IEnumerable<OrderDto>> GetAllWithFiltersAsync(int? userId = null, int? performanceId = null,OrderStatus? orderStatus = null); // Pour l'organisateur et admin?
+        Task<IEnumerable<OrderDto>> GetByUserIdAsync(int userId);   // Pour le client
         Task<IEnumerable<OrderDto>> GetByStatusAsync(OrderStatus status);
         Task<OrderDto?> GetWithTicketsAsync(int orderId);
 

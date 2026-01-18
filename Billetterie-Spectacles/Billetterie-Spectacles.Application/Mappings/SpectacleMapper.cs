@@ -15,6 +15,13 @@ namespace Billetterie_Spectacles.Application.Mappings
         /// </summary>
         public static SpectacleDto EntityToDto(Spectacle spectacle)
         {
+            // Mapper les performances uniquement si elles sont chargées
+            IEnumerable<PerformanceDto>? performances = null;
+            if (spectacle.Performances != null && spectacle.Performances.Any())
+            {
+                performances = spectacle.Performances.Select(EntityToDtoWithoutSpectacle);
+            }
+
             return new SpectacleDto(
                 Id: spectacle.SpectacleId,      // SpectacleId simplifié pour apppel API
                 Name: spectacle.Name,
@@ -22,8 +29,69 @@ namespace Billetterie_Spectacles.Application.Mappings
                 Description: spectacle.Description,
                 Duration: spectacle.Duration,
                 Thumbnail: spectacle.Thumbnail,
+                CreatedByUserId: spectacle.CreatedByUserId,
                 CreatedAt: spectacle.CreatedAt,
-                UpdatedAt: spectacle.UpdatedAt
+                UpdatedAt: spectacle.UpdatedAt,
+                Performances: null              // Optionnel : on envoi les représentations à la demande (API)
+            );
+        }
+
+        /// <summary>
+        /// Convertit une entité Spectacle en SpectacleDto SANS mapper les Performances
+        /// Utilisé pour éviter les références circulaires quand on mappe depuis Performance
+        /// </summary>
+        public static SpectacleDto EntityToDtoWithoutPerformances(Spectacle spectacle)
+        {
+            return new SpectacleDto(
+                Id: spectacle.SpectacleId,
+                Name: spectacle.Name,
+                Category: spectacle.Category.ToString(),
+                Description: spectacle.Description,
+                Duration: spectacle.Duration,
+                Thumbnail: spectacle.Thumbnail,
+                CreatedByUserId: spectacle.CreatedByUserId,
+                CreatedAt: spectacle.CreatedAt,
+                UpdatedAt: spectacle.UpdatedAt,
+                Performances: null  // Pas de performances pour éviter la boucle
+            );
+        }
+
+        /// <summary>
+        /// Convertit une entité Spectacle en SpectacleDto avec ses performances
+        /// </summary>
+        public static SpectacleDto EntityToDtoWithPerformances(Spectacle spectacle)
+        {
+            return new SpectacleDto(
+                Id: spectacle.SpectacleId,
+                Name: spectacle.Name,
+                Category: spectacle.Category.ToString(),
+                Description: spectacle.Description,
+                Duration: spectacle.Duration,
+                Thumbnail: spectacle.Thumbnail,
+                CreatedByUserId: spectacle.CreatedByUserId,
+                CreatedAt: spectacle.CreatedAt,
+                UpdatedAt: spectacle.UpdatedAt,
+                Performances: spectacle.Performances?
+                    .Select(p => PerformanceMapper.EntityToDto(p))  //  Mapper pour chaque performance
+                    .ToList()
+            );
+        }
+
+        /// <summary>
+        /// Convertit une Performance en PerformanceDto SANS mapper le Spectacle
+        /// Utilisé pour éviter les références circulaires quand on mappe depuis Spectacle
+        /// </summary>
+        private static PerformanceDto EntityToDtoWithoutSpectacle(Performance performance)
+        {
+            return new PerformanceDto(
+                Id: performance.PerformanceId,
+                Date: performance.Date,
+                Status: performance.Status.ToString(),
+                Capacity: performance.Capacity,
+                UnitPrice: performance.UnitPrice,
+                AvailableTickets: performance.AvailableTickets,
+                SpectacleId: performance.SpectacleId,
+                Spectacle: null  // Pas de spectacle pour éviter la boucle
             );
         }
 

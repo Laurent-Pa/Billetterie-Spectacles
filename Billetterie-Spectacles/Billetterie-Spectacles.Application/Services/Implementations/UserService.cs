@@ -144,7 +144,7 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             return true;
         }
 
-        public async Task<bool> ChangeEmailAsync(int userId, ChangeEmailDto dto)
+        public async Task<UserDto> ChangeEmailAsync(int userId, ChangeEmailDto dto)
         {
             // Récupérer l'utilisateur
             User? user = await _userRepository.GetByIdAsync(userId) 
@@ -168,13 +168,14 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                 throw new DomainException("Le nouvel email doit être différent de l'ancien.");
             }
 
-            // Mettre à jour l'email
+            // Changer l'email
             user.ChangeEmail(dto.NewEmail);
 
             // Sauvegarder
-            await _userRepository.UpdateAsync(user);
+            User updatedUser = await _userRepository.UpdateAsync(user);
 
-            return true;
+            // Retourner le UserDto
+            return UserMapper.EntityToDto(updatedUser);
         }
 
         #endregion

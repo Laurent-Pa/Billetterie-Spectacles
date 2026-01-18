@@ -11,6 +11,7 @@
         int Capacity,
         decimal UnitPrice,
         int AvailableTickets,
-        int SpectacleId
+        int SpectacleId,
+        SpectacleDto? Spectacle = null
     );
 }

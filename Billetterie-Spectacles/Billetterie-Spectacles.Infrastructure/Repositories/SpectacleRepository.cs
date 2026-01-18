@@ -24,7 +24,7 @@ namespace Billetterie_Spectacles.Infrastructure.Repositories
         public async Task<IEnumerable<Spectacle>> GetAllAsync()
         {
             return await _context.Spectacles
-                .OrderBy(s => s.Name)
+                .OrderByDescending(s => s.CreatedAt)
                 .ToListAsync();
         }
 
@@ -65,26 +65,27 @@ namespace Billetterie_Spectacles.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Spectacle>> GetByCreatorAsync(int userId)
-        {
-            return await _context.Spectacles
-                .Where(s => s.CreatedByUserId == userId)
-                .OrderByDescending(s => s.CreatedAt)
-                .ToListAsync();
-        }
+        //public async Task<IEnumerable<Spectacle>> GetByCreatorAsync(int userId)
+        //{
+        //    return await _context.Spectacles
+        //        .Where(s => s.CreatedByUserId == userId)
+        //        .OrderByDescending(s => s.CreatedAt)
+        //        .ToListAsync();
+        //}
 
-        public async Task<IEnumerable<Spectacle>> SearchByNameAsync(string searchTerm)
-        {
-            return await _context.Spectacles
-                .Where(s => EF.Functions.Like(s.Name, $"%{searchTerm}%"))   // Pattern SQL: cherchele term n'importe où dans le nom (insensible à la casse)
-                .OrderBy(s => s.Name)
-                .ToListAsync();
-        }
+        //public async Task<IEnumerable<Spectacle>> SearchByNameAsync(string searchTerm)
+        //{
+        //    return await _context.Spectacles
+        //        .Where(s => EF.Functions.Like(s.Name, $"%{searchTerm}%"))   // Pattern SQL: cherche le term n'importe où dans le nom (insensible à la casse)
+        //        .OrderBy(s => s.Name)
+        //        .ToListAsync();
+        //}
 
         public async Task<Spectacle?> GetWithPerformancesAsync(int id)
         {
             return await _context.Spectacles
                 .Include(s => s.Performances)                       // Eager Loading (une seule requete au lieu de N+1 requetes)
+                .OrderByDescending(s => s.CreatedAt)
                 .FirstOrDefaultAsync(s => s.SpectacleId == id);
         }
 

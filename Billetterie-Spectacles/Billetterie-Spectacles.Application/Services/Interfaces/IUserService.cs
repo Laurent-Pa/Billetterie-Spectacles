@@ -24,7 +24,7 @@ namespace Billetterie_Spectacles.Application.Services.Interfaces
 
             // Opérations spécifiques
             Task<bool> ChangePasswordAsync(int userId, ChangePasswordDto changePasswordDto);
-            Task<bool> ChangeEmailAsync(int userId, ChangeEmailDto changeEmailDto);
+            Task<UserDto> ChangeEmailAsync(int userId, ChangeEmailDto changeEmailDto);
             Task<bool> EmailExistsAsync(string userEmail);
 
             // Statistiques

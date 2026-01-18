@@ -1,4 +1,5 @@
-﻿using Billetterie_Spectacles.Application.Interfaces;
+﻿using Billetterie_Spectacles.Application.DTO.Response;
+using Billetterie_Spectacles.Application.Interfaces;
 using Billetterie_Spectacles.Domain.Entities;
 using Billetterie_Spectacles.Domain.Enums;
 using Billetterie_Spectacles.Infrastructure.Data;
@@ -23,7 +24,7 @@ namespace Billetterie_Spectacles.Infrastructure.Repositories
         public async Task<IEnumerable<Order?>> GetAllAsync()
         {
             return await _context.Orders
-                .OrderByDescending(o => o.Date)
+                .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
         }
 
@@ -60,7 +61,38 @@ namespace Billetterie_Spectacles.Infrastructure.Repositories
         {
             return await _context.Orders
                 .Where(o => o.UserId == userId)
-                .OrderByDescending(o => o.Date)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+
+        // <summary>
+        /// Récupère toutes les commandes avec filtres optionnels (pour Admin et organisateur)
+        /// </summary>
+        public async Task<IEnumerable<Order>> GetAllWithFiltersAsync(
+            int? userId = null,
+            int? performanceId = null,
+            OrderStatus? orderStatus = null)
+        {
+            var query = _context.Orders
+                .Include(o => o.Tickets)                // on charge les tickets
+                    .ThenInclude(p => p.Performance)    // on charge les représentations correspondantes
+                    .ThenInclude(p => p.Spectacle)      // on charge les spectacles correspondants
+                .Include(o => o.User)
+                .Include(o => o.Tickets)
+                .AsQueryable();
+
+            // Appliquer les filtres optionnels
+            if (userId.HasValue)
+                query = query.Where(o => o.UserId == userId.Value);
+
+            if(performanceId.HasValue)
+        query = query.Where(o => o.Tickets.Any(t => t.PerformanceId == performanceId.Value));
+
+            if (orderStatus.HasValue)
+                query = query.Where(o => o.Status == orderStatus.Value);
+
+            return await query
+                .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
         }
 
@@ -68,7 +100,7 @@ namespace Billetterie_Spectacles.Infrastructure.Repositories
         {
             return await _context.Orders
                 .Where(o => o.Status == status)
-                .OrderByDescending(o => o.Date)
+                .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
         }
 
@@ -76,28 +108,30 @@ namespace Billetterie_Spectacles.Infrastructure.Repositories
         {
             return await _context.Orders
                 .Include(o => o.Tickets)
+                    .ThenInclude(t => t.Performance)
+                        .ThenInclude(p => p.Spectacle)
                 .FirstOrDefaultAsync(o => o.OrderId == id);
         }
 
         public async Task<IEnumerable<Order>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)
         {
             return await _context.Orders
-                .Where(o => o.Date >= startDate && o.Date <= endDate)
-                .OrderByDescending(o => o.Date)
+                .Where(o => o.CreatedAt >= startDate && o.CreatedAt <= endDate)
+                .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
         }
 
         public async Task<decimal> GetTotalRevenueAsync()
         {
             return await _context.Orders
-                .Where(o => o.Status == OrderStatus.Paid)                      // Les recettes ne se font que sur les commandes payées
+                .Where(o => o.Status == OrderStatus.PaymentConfirmed)                      // Les recettes ne se font que sur les commandes payées
                 .SumAsync(o => o.TotalPrice);                                       // methode LINQ pour l'aggregation des valeurs
         }
 
         public async Task<decimal> GetTotalRevenueByUserAsync(int userId)
         {
             return await _context.Orders
-                .Where(o => o.UserId == userId && o.Status == OrderStatus.Paid) // Les recettes ne se font que sur les commandes payées
+                .Where(o => o.UserId == userId && o.Status == OrderStatus.PaymentConfirmed) // Les recettes ne se font que sur les commandes payées
                 .SumAsync(o => o.TotalPrice);
         }
 
@@ -110,7 +144,7 @@ namespace Billetterie_Spectacles.Infrastructure.Repositories
         public async Task<IEnumerable<Order>> GetRecentOrdersAsync(int count = 10)
         {
             return await _context.Orders
-                .OrderByDescending(o => o.Date)
+                .OrderByDescending(o => o.CreatedAt)
                 .Take(count)                        // selectionne les 10 dernières commandes
                 .ToListAsync();
         }

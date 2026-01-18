@@ -15,13 +15,21 @@ namespace Billetterie_Spectacles.Application.Mappings
         /// </summary>
         public static OrderDto EntityToDto(Order order)
         {
+            // Mapper les tickets uniquement s'ils sont chargés
+            IEnumerable<TicketDto>? tickets = null;
+            if (order.Tickets != null && order.Tickets.Any())
+            {
+                tickets = order.Tickets.Select(TicketMapper.EntityToDto);
+            }
+
             return new OrderDto(
                 Id: order.OrderId,
                 Status: order.Status.ToString(),  // Enum → String
-                Date: order.Date,
                 TotalPrice: order.TotalPrice,
                 UserId: order.UserId,
-                UpdatedAt: order.UpdatedAt
+                CreatedAt: order.CreatedAt,
+                UpdatedAt: order.UpdatedAt,
+                Tickets: tickets
             );
         }
     }

@@ -4,6 +4,7 @@ using Billetterie_Spectacles.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Billetterie_Spectacles.Infrastructure.Migrations
 {
     [DbContext(typeof(BilletterieDbContext))]
-    partial class BilletterieDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260117173418_AddPaymentIntentIdToOrders")]
+    partial class AddPaymentIntentIdToOrders
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -299,7 +302,7 @@ namespace Billetterie_Spectacles.Infrastructure.Migrations
             modelBuilder.Entity("Billetterie_Spectacles.Domain.Entities.Ticket", b =>
                 {
                     b.HasOne("Billetterie_Spectacles.Domain.Entities.Order", "Order")
-                        .WithMany("Tickets")
+                        .WithMany()
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -313,11 +316,6 @@ namespace Billetterie_Spectacles.Infrastructure.Migrations
                     b.Navigation("Order");
 
                     b.Navigation("Performance");
-                });
-
-            modelBuilder.Entity("Billetterie_Spectacles.Domain.Entities.Order", b =>
-                {
-                    b.Navigation("Tickets");
                 });
 
             modelBuilder.Entity("Billetterie_Spectacles.Domain.Entities.Performance", b =>

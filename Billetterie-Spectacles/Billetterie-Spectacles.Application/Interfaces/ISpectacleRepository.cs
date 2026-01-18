@@ -19,8 +19,8 @@ namespace Billetterie_Spectacles.Application.Interfaces
 
         // Méthodes métier spécifiques
         Task<IEnumerable<Spectacle>> GetByCategoryAsync(SpectacleCategory category);    // Pour utilisateur : filtrer l'affichage des spectacles
-        Task<IEnumerable<Spectacle>> GetByCreatorAsync(int userId);                     // Pour administration : afficher uniquement ses spectacles
-        Task<IEnumerable<Spectacle>> SearchByNameAsync(string searchTerm);              // Pour utilisateur : barre de recherche (penser à une requete SQL pour recherche partielle)
+        //Task<IEnumerable<Spectacle>> GetByCreatorAsync(int userId);                     // Pour administration : afficher uniquement ses spectacles --> géré par le controller
+        //Task<IEnumerable<Spectacle>> SearchByNameAsync(string searchTerm);              // Pour utilisateur : barre de recherche (penser à une requete SQL pour recherche partielle)
         Task<Spectacle?> GetWithPerformancesAsync(int id);                              // Pour utilisateur (Eager loading): afficher toutes les dates dispo d'un spectacle spécifique
         Task<int> CountByCategoryAsync(SpectacleCategory category);                     // Pour administration : statistiques par categorie
     }

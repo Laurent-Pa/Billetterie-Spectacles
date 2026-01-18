@@ -16,6 +16,15 @@ namespace Billetterie_Spectacles.Application.Mappings
         /// </summary>
         public static PerformanceDto EntityToDto(Performance performance)
         {
+
+            // Mapper le spectacle uniquement s'il est chargé
+            // IMPORTANT : On utilise EntityToDtoWithoutPerformances pour éviter les références circulaires
+            SpectacleDto? spectacle = null;
+            if (performance.Spectacle != null)
+            {
+                spectacle = SpectacleMapper.EntityToDtoWithoutPerformances(performance.Spectacle);
+            }
+
             return new PerformanceDto(
                 Id: performance.PerformanceId,      // PerformanceId simplifié pour l'API
                 Date: performance.Date,
@@ -23,17 +32,18 @@ namespace Billetterie_Spectacles.Application.Mappings
                 Capacity: performance.Capacity,
                 AvailableTickets: performance.AvailableTickets,
                 UnitPrice: performance.UnitPrice,
-                SpectacleId: performance.SpectacleId
+                SpectacleId: performance.SpectacleId,
+                Spectacle: spectacle
             );
         }
 
         /// <summary>
         /// Convertit un CreatePerformanceDto en entité Performance
         /// </summary>
-        public static Performance CreateDtoToEntity(CreatePerformanceDto dto)
+        public static Performance CreateDtoToEntity(int spectacleId, CreatePerformanceDto dto)
         {
             return new Performance(
-                spectacleId: dto.SpectacleId,
+                spectacleId: spectacleId,   // l'ID du spectacle est fourni par l'URL de l'API, pas le DTO
                 date: dto.Date,
                 capacity: dto.Capacity,
                 unitPrice: dto.UnitPrice

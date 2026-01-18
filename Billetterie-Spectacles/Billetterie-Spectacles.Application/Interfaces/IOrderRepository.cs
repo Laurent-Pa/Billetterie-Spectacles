@@ -17,6 +17,7 @@ namespace Billetterie_Spectacles.Application.Interfaces
 
         // Méthodes métier spécifiques
         Task<IEnumerable<Order>> GetByUserIdAsync(int userId);                                  // Pour utilisateur : consulter son historique de commandes
+        Task<IEnumerable<Order>> GetAllWithFiltersAsync(int? userId = null, int? performanceId = null, OrderStatus? orderStatus = null); // Pour affichage avec filtres optionnels
         Task<IEnumerable<Order>> GetByStatusAsync(OrderStatus status);                          // Pour gestion des commandes en cours et identifier les pb avec service
         Task<Order?> GetWithTicketsAsync(int id);                                               // Pour utilisateur (Eager loading): 1 requete pour récupérer ts les billets d'une commande
         Task<IEnumerable<Order>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);     // Pour administration : statistiques des commandes par période (mois, semaine,...)

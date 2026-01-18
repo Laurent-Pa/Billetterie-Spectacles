@@ -24,8 +24,9 @@ namespace Billetterie_Spectacles.Application.DTO.Request
         [Range(0, 10000, ErrorMessage = "Le prix unitaire doit être entre 0 et 10 000€")]
         public decimal UnitPrice { get; set; }
 
-        [Required(ErrorMessage = "L'identifiant du spectacle est obligatoire")]
-        [Range(1, int.MaxValue, ErrorMessage = "L'identifiant du spectacle doit être valide")]
-        public int SpectacleId { get; set; }
+        //[Required(ErrorMessage = "L'identifiant du spectacle est obligatoire")]
+        //[Range(1, int.MaxValue, ErrorMessage = "L'identifiant du spectacle doit être valide")]
+
+        //public int SpectacleId { get; set; } // Le spectacleId est fourni dans l'URL de l'API REST
     }
 }

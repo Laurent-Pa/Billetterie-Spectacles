@@ -20,10 +20,10 @@ namespace Billetterie_Spectacles.Application.Services.Interfaces
         Task<PerformanceDto?> GetWithTicketsAsync(int performanceId);
 
         // Création et modification
-        Task<PerformanceDto> CreatePerformanceAsync(CreatePerformanceDto dto, int currentUserId, bool isAdmin);     // Permission gérée par le spectacle parent
-        Task<PerformanceDto> UpdatePerformanceAsync(int performanceId, UpdatePerformanceDto dto, int currentUserId, bool isAdmin);
+        Task<PerformanceDto> CreatePerformanceAsync(int spectacleId, CreatePerformanceDto dto);     // Permission gérée par le spectacle parent
+        Task<PerformanceDto> UpdatePerformanceAsync(int performanceId, UpdatePerformanceDto dto);    // Permission gérée par le spectacle parent
         Task<PerformanceDto> CancelPerformanceAsync(int performanceId, int currentUserId, bool isAdmin);            // Action spécifique différente d'un update car impact les tickets vendus
-        Task<bool> DeletePerformanceAsync(int performanceId, int currentUserId, bool isAdmin);
+        Task<bool> DeletePerformanceAsync(int performanceId);
 
         // Disponibilité
         Task<bool> HasAvailableTicketsAsync(int performanceId);

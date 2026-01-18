@@ -3,13 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Billetterie_Spectacles.Infrastructure.Data
 {
-    public class BilletterieDbContext : DbContext
+    public class BilletterieDbContext(DbContextOptions<BilletterieDbContext> options) : DbContext(options)
     {
-        // Constructeur requis pour l'injection de dépendances
-        public BilletterieDbContext(DbContextOptions<BilletterieDbContext> options)
-            : base(options)
-        {
-        }
 
         // DbSets : Représentent les tables de la base de données
         public DbSet<User> Users { get; set; } = null!;
@@ -209,7 +204,7 @@ namespace Billetterie_Spectacles.Infrastructure.Data
                 entity.HasMany(p => p.Tickets)
                     .WithOne(t => t.Performance)
                     .HasForeignKey(t => t.PerformanceId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                    .OnDelete(DeleteBehavior.Restrict);     // protège les données de ventes (on ne supprime pas une réprésentation s'il y a eu des commandes
             });
         }
 
@@ -230,10 +225,6 @@ namespace Billetterie_Spectacles.Infrastructure.Data
                     .HasConversion<int>()
                     .IsRequired();
 
-                entity.Property(o => o.Date)
-                    .HasColumnName("date")
-                    .IsRequired();
-
                 entity.Property(o => o.TotalPrice)
                     .HasColumnName("total_price")
                     .HasColumnType("decimal(18,2)")  // Précision pour les montants
@@ -243,6 +234,11 @@ namespace Billetterie_Spectacles.Infrastructure.Data
                     .HasColumnName("user_id")
                     .IsRequired();
 
+                entity.Property(o => o.PaymentIntentId)
+                    .HasColumnName("payment_intent_id") 
+                    .HasMaxLength(255)
+                    .IsRequired(false);  // Nullable
+
                 entity.Property(o => o.CreatedAt)
                     .HasColumnName("created_at")
                     .IsRequired();
@@ -251,11 +247,19 @@ namespace Billetterie_Spectacles.Infrastructure.Data
                     .HasColumnName("updated_at")
                     .IsRequired();
 
-                // Ignorer la propriété Tickets car c'est une collection en lecture seule
-                // La relation est configurée via la propriété privée _tickets
-                entity.Ignore(o => o.Tickets);
+                // === RELATIONS ===
 
-                // Note: La relation Order → Tickets est configurée dans ConfigureTickets
+                //  Order -> User
+                entity.HasOne(o => o.User)
+                    .WithMany(u => u.Orders)
+                    .HasForeignKey(o => o.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                //  Order -> Tickets
+                entity.HasMany(o => o.Tickets)
+                    .WithOne(t => t.Order)
+                    .HasForeignKey(t => t.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
 
@@ -276,8 +280,8 @@ namespace Billetterie_Spectacles.Infrastructure.Data
                     .HasConversion<int>()
                     .IsRequired();
 
-                entity.Property(t => t.Price)
-                    .HasColumnName("price")
+                entity.Property(t => t.UnitPrice)
+                    .HasColumnName("unit_price")
                     .HasColumnType("decimal(18,2)")
                     .IsRequired();
 
@@ -296,7 +300,8 @@ namespace Billetterie_Spectacles.Infrastructure.Data
                 entity.Property(t => t.UpdatedAt)
                     .HasColumnName("updated_at")
                     .IsRequired();
-                // Relations déjà configurées via Performance et Order
+
+                // Relations déjà configurées via Performance et Order (parents)
             });
         }
 

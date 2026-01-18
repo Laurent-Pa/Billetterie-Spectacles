@@ -11,7 +11,10 @@
             string? Description,
             int Duration,           // entier en minutes (cf entité dans Domain)
             string? Thumbnail,
+            int CreatedByUserId,
             DateTime CreatedAt,
-            DateTime UpdatedAt
+            DateTime UpdatedAt,
+            IEnumerable<PerformanceDto>? Performances = null // optionnel (suivant demande API pour minimiser les données chargées)
+            
         );
 }

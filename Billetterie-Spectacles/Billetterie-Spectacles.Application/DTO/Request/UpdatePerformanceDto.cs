@@ -17,7 +17,7 @@ namespace Billetterie_Spectacles.Application.DTO.Request
 
         [Required(ErrorMessage = "La capacité est obligatoire")]
         [Range(1, 100000, ErrorMessage = "La capacité doit être entre 1 et 100 000 places")]
-        public int Capacity { get; set; }   // valider la nouvelle capacité par rapport au nbre de places vendues
+        public int Capacity { get; set; }   // Attention: valider la nouvelle capacité par rapport au nbre de places vendues
 
         [Required(ErrorMessage = "Le prix est obligatoire")]
         [Range(0, 10000, ErrorMessage = "Le prix doit être entre 0 et 10 000€")]
