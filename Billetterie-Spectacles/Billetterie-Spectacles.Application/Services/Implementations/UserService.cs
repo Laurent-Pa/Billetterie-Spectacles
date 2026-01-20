@@ -160,9 +160,12 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                 ?? throw new NotFoundException($"Utilisateur avec l'ID {userId} introuvable.");
 
             // Vérifier que le mot de passe actuel est correct (réauthentification)
-            if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.Password))
+            var passwordHasher = new PasswordHasher<User>();
+            var verificationResult = passwordHasher.VerifyHashedPassword(user, user.Password, dto.CurrentPassword);
+
+            if (verificationResult == PasswordVerificationResult.Failed)
             {
-                throw new DomainException("Le mot de passe est incorrect.");
+                throw new DomainException("Le mot de passe actuel est incorrect.");
             }
 
             // Vérifier que le nouvel email n'est pas déjà utilisé

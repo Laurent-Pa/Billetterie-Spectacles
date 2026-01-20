@@ -1,7 +1,6 @@
 ﻿using Billeterie_Spectacles.Domain.Enums;
 using Billetterie_Spectacles.Domain.Entities;
 using Billetterie_Spectacles.Domain.Enums;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity; // AJOUT : Pour le PasswordHasher
 
 namespace Billetterie_Spectacles.Infrastructure.Data
