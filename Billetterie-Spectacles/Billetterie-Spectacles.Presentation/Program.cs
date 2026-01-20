@@ -152,11 +152,37 @@ builder.Services.AddCors(options =>
 });
 
 
+
+
 var app = builder.Build();
+
+// ============================================
+// 8. Application des migrations et seeding
+// ============================================
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<BilletterieDbContext>();
+
+        // Appliquer automatiquement les migrations au démarrage
+        context.Database.Migrate();
+        Console.WriteLine("Migrations appliquées avec succès");
+
+        // Seeder les données de test
+        DatabaseSeeder.Seed(context);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Une erreur s'est produite lors de la migration ou du seeding de la base de données");
+    }
+}
 
 
 // ============================================
-// 8. Configuration du pipeline HTTP
+// 9. Configuration du pipeline HTTP
 // ============================================
 if (app.Environment.IsDevelopment())
 {

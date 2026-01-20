@@ -3,6 +3,7 @@ using Billetterie_Spectacles.Application.Interfaces;
 using Billetterie_Spectacles.Application.Mappings;
 using Billetterie_Spectacles.Application.Services.Interfaces;
 using Billetterie_Spectacles.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
 
 namespace Billetterie_Spectacles.Application.Services.Implementations
 {
@@ -25,11 +26,11 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                 return null;
             }
 
-            // Vérifier le mot de passe avec BCrypt
-            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(password, user.Password);
+            // Vérifier le mot de passe avec PasswordHasher
+            var passwordHasher = new PasswordHasher<User>();
+            var result = passwordHasher.VerifyHashedPassword(user, user.Password, password);
 
-            // Si le mot de passe est invalide, retourner null
-            if (!isPasswordValid)
+            if (result == PasswordVerificationResult.Failed)
             {
                 return null;
             }

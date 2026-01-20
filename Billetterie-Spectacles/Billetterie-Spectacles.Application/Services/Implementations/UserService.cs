@@ -7,9 +7,7 @@ using Billetterie_Spectacles.Application.Services.Interfaces;
 using Billetterie_Spectacles.Domain.Entities;
 using Billetterie_Spectacles.Domain.Enums;
 using Billetterie_Spectacles.Domain.Exceptions;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Microsoft.AspNetCore.Identity;
 
 namespace Billetterie_Spectacles.Application.Services.Implementations
 {
@@ -67,8 +65,9 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                 throw new DomainException($"L'email {dto.Email} est déjà utilisé.");
             }
 
-            // Hasher le mot de passe (logique métier)
-            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+            // Hasher le mot de passe avec PasswordHasher (logique métier)
+            var passwordHasher = new PasswordHasher<User>();
+            string hashedPassword = passwordHasher.HashPassword(null, dto.Password);
 
             // Créer l'entité User (rôle Client par défaut)
             User user = new(
@@ -120,8 +119,17 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             User? user = await _userRepository.GetByIdAsync(userId) 
                 ?? throw new NotFoundException($"Utilisateur avec l'ID {userId} introuvable.");
 
-            // Vérifier que le mot de passe actuel est correct
-            if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.Password))
+            //// Vérifier que le mot de passe actuel est correct
+            //if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.Password))
+            //{
+            //    throw new DomainException("Le mot de passe actuel est incorrect.");
+            //}
+
+            // Vérifier que l'ancien mot de passe est correct
+            var passwordHasher = new PasswordHasher<User>();
+            var verificationResult = passwordHasher.VerifyHashedPassword(user, user.Password, dto.CurrentPassword);
+
+            if (verificationResult == PasswordVerificationResult.Failed)
             {
                 throw new DomainException("Le mot de passe actuel est incorrect.");
             }
@@ -133,7 +141,8 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             }
 
             // Hasher le nouveau mot de passe
-            string newHashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+            //string newHashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+            string newHashedPassword = passwordHasher.HashPassword(null, dto.NewPassword);
 
             // Mettre à jour le mot de passe
             user.ChangePassword(newHashedPassword);
