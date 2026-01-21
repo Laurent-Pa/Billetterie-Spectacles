@@ -57,8 +57,17 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<ISpectacleService, SpectacleService>();
 builder.Services.AddScoped<IPerformanceService, PerformanceService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<IPaymentService, MockPaymentService>();
+//builder.Services.AddScoped<IPaymentService, MockPaymentService>();
 // builder.Services.AddScoped<IPaymentService, StripePaymentService>();
+builder.Services.AddHttpClient<IPaymentHttpService, PaymentHttpService>(client =>
+{
+    var paymentServiceUrl = builder.Configuration["PaymentService:BaseUrl"]
+        ?? "https://localhost:7049"; //  URL locale par défaut
+
+    client.BaseAddress = new Uri(paymentServiceUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+});
 
 // ============================================
 // 4. Configuration de l'authentification JWT (Json Web Token)

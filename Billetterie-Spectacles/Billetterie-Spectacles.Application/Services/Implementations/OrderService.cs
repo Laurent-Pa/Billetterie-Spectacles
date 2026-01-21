@@ -17,7 +17,8 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
         IPerformanceRepository _performanceRepository,      // Vérifier la dispo et réserver des places
         ITicketRepository _ticketRepository,                // Créer et gérer les tickets
         IUserRepository _userRepository,                     // Vérifier que l'user existe
-        IPaymentService _paymentService
+        //IPaymentService _paymentService,                    // Service de paiment (interne appli)
+        IPaymentHttpService _paymentHttpService             // Micro-Service de paiment (externe appli)
         ): IOrderService
     {
         #region Consultation
@@ -138,7 +139,8 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             }
 
             // === PHASE 3 : TRAITEMENT DU PAIEMENT ===
-            var paymentResult = await _paymentService.ProcessPaymentAsync(
+            // Avec Service de paiment intégré dans l'app
+            /*var paymentResult = await _paymentService.ProcessPaymentAsync(
                 totalPrice: totalPrice,
                 userId: userId
             );
@@ -156,37 +158,63 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
 
                 throw new DomainException($"Paiement échoué : {paymentResult.ErrorMessage}");
             }
+            */
 
-            // === PHASE 4 : PAIEMENT RÉUSSI - CRÉER TOUT D'UN COUP ===
 
-            // Créer l'order avec statut Pending
+            // === PHASE 3 : CRÉER LA COMMANDE ET TRAITER LE PAIEMENT ===
+
+            // Créer l'order avec statut Pending (pour obtenir un OrderId)
             Order order = new(userId: userId, totalPrice: totalPrice);
 
-            // Confirmer avant de sauvegarder
-            order.ConfirmPayment(paymentResult.PaymentIntentId!);
-
-            // Sauvegarder l'order (déjà confirmé)
+            // Sauvegarder l'order pour obtenir son OrderId
             Order? createdOrder = await _orderRepository.AddAsync(order)
                 ?? throw new DomainException("Erreur lors de la création de la commande.");
 
-            // On crée tous les tickets d'un coup
+            // Appeler le microservice avec le vrai OrderId
+            var paymentResponse = await _paymentHttpService.ProcessPaymentAsync(
+                amount: totalPrice,
+                currency: "EUR",
+                orderId: createdOrder.OrderId.ToString()
+            );
+
+            if (paymentResponse == null || paymentResponse.Status != "Succeeded")
+            {
+                var errorMessage = paymentResponse?.ErrorMessage ?? "Service de paiement indisponible";
+
+                // Marquer la commande comme échouée
+                createdOrder.MarkAsFailed();
+                await _orderRepository.UpdateAsync(createdOrder);
+
+                // Paiement échoué : libérer les places
+                foreach (Performance performance in performancesToUpdate)
+                {
+                    performance.ReleaseTickets(
+                        ticketsToCreate.Count(t => t.PerformanceId == performance.PerformanceId)
+                    );
+                    await _performanceRepository.UpdateAsync(performance);
+                }
+
+                throw new DomainException($"Paiement échoué : {errorMessage}");
+            }
+
+            // Paiement réussi : confirmer la commande
+            createdOrder.ConfirmPayment(paymentResponse.PaymentIntentId);
+            await _orderRepository.UpdateAsync(createdOrder);
+
+
+            // === PHASE 4 : PAIEMENT RÉUSSI - CRÉER LES TICKETS ===
+
+            // L'order existe déjà et est confirmé, on crée les tickets
             foreach (Ticket ticket in ticketsToCreate)
             {
                 ticket.OrderId = createdOrder.OrderId;
-
-                // On évite d'appeler SaveChanges entre chaque ticket
                 await _ticketRepository.AddAsync(ticket);
             }
 
-            //// Mettre à jour les performances (places définitivement réservées)
-            //foreach (Performance performance in performancesToUpdate)
-            //{
-            //    await _performanceRepository.UpdateAsync(performance);
-            //}
-
-            // Recharger l'order avec ses tickets pour le retour
+            // Recharger la commande avec ses tickets pour le retour
             Order? orderWithTickets = await _orderRepository.GetWithTicketsAsync(createdOrder.OrderId);
             return OrderMapper.EntityToDto(orderWithTickets!);
+
         }
 
         public async Task<OrderDto> CancelOrderAsync(int orderId, int currentUserId)
