@@ -15,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 // ============================================
 // 1. Configuration de la base de données
 // ============================================
-
+// test
 
 String connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found");
