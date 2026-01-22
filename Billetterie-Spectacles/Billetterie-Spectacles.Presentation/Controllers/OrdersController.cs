@@ -1,4 +1,4 @@
-﻿using Billetterie_Spectacles.Application.DTO.Request;
+using Billetterie_Spectacles.Application.DTO.Request;
 using Billetterie_Spectacles.Application.DTO.Response;
 using Billetterie_Spectacles.Application.Services.Interfaces;
 using Billetterie_Spectacles.Domain.Entities;
@@ -111,7 +111,7 @@ namespace Billetterie_Spectacles.Presentation.Controllers
 
         /// <summary>
         /// Récupérer les commandes de l'utilisateur connecté
-        /// Accessible par : Client, Organizer
+        /// Chaque utilisateur ne peut voir que ses propres commandes
         /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<OrderDto>), StatusCodes.Status200OK)]
@@ -122,14 +122,19 @@ namespace Billetterie_Spectacles.Presentation.Controllers
             {
                 int currentUserId = GetCurrentUserId();
 
+                // Récupérer uniquement les commandes de l'utilisateur connecté
                 IEnumerable<OrderDto> orders = await _orderService.GetByUserIdAsync(currentUserId);
 
-                if (orders == null || !orders.Any())
+                // Vérification supplémentaire : s'assurer que toutes les commandes appartiennent bien à l'utilisateur
+                var filteredOrders = orders.Where(o => o.UserId == currentUserId).ToList();
+
+                // Retourner une liste vide plutôt qu'un 404 si aucune commande
+                if (filteredOrders.Count == 0)
                 {
-                    return NotFound(new { message = $"Aucune commande trouvée pour l'id {currentUserId}" });
+                    return Ok(new List<OrderDto>());
                 }
 
-                return Ok(orders);
+                return Ok(filteredOrders);
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -180,7 +185,7 @@ namespace Billetterie_Spectacles.Presentation.Controllers
 
         /// <summary>
         /// Récupérer les détails d'une commande spécifique avec ses tickets
-        /// Accessible par : Client (ses commandes), Admin, Organizer (toutes)
+        /// Accessible uniquement par le propriétaire de la commande
         /// </summary>
         /// <param name="id">ID de la commande</param>
         [HttpGet("{id}")]
@@ -192,7 +197,6 @@ namespace Billetterie_Spectacles.Presentation.Controllers
             try
             {
                 int currentUserId = GetCurrentUserId();
-                UserRole currentUserRole = GetCurrentUserRole();
 
                 // Récupérer la commande avec ses tickets
                 OrderDto? order = await _orderService.GetWithTicketsAsync(id);
@@ -202,10 +206,8 @@ namespace Billetterie_Spectacles.Presentation.Controllers
                     return NotFound(new { message = $"Commande avec l'ID {id} introuvable." });
                 }
 
-                // Vérification des permissions
-                // Client : peut voir uniquement ses propres commandes
-                // Admin et Organizer : peuvent voir toutes les commandes
-                if (currentUserRole == UserRole.Client && order.UserId != currentUserId)
+                // Vérification des permissions : seul le propriétaire peut voir sa commande
+                if (order.UserId != currentUserId)
                 {
                     return Forbid();  // 403 Forbidden
                 }

@@ -13,26 +13,37 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // ============================================
-// 1. Configuration de la base de données
+// 1. Configuration de la base de donnï¿½es
 // ============================================
 
-// Configuration de la connexion à la base de données
+// Configuration de la connexion ï¿½ la base de donnï¿½es
 String connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found");
 
-// Enregistrement du DbContext dans le container d'injection de dépendances
-// Configure EF Core pour utiliser SQL Server
-builder.Services.AddDbContext<BilletterieDbContext>(options =>
-    options.UseSqlServer(connectionString));
+// Enregistrement du DbContext dans le container d'injection de dï¿½pendances
+// Configure EF Core pour utiliser SQLite (pour macOS) ou SQL Server (pour Windows)
+// DÃ©tection automatique : SQLite si "Data Source=" sans "Server=", sinon SQL Server
+if (connectionString.Contains("Data Source=") && !connectionString.Contains("Server="))
+{
+    // SQLite
+    builder.Services.AddDbContext<BilletterieDbContext>(options =>
+        options.UseSqlite(connectionString));
+}
+else
+{
+    // SQL Server
+    builder.Services.AddDbContext<BilletterieDbContext>(options =>
+        options.UseSqlServer(connectionString));
+}
 
 // Pour afficher le log des requetes faites par EF Core en console Visual Studio (aide au debug)
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Information);
 
 // ============================================
-// 2. Enregistrement des Repositories (pour l'injection de dépendance DI)
+// 2. Enregistrement des Repositories (pour l'injection de dï¿½pendance DI)
 // ============================================
 
-// Une instance par requête
+// Une instance par requï¿½te
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ISpectacleRepository, SpectacleRepository>();
 builder.Services.AddScoped<IPerformanceRepository, PerformanceRepository>();
@@ -41,7 +52,7 @@ builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 
 
 // ============================================
-// 3. Enregistrement des Services (pour l'injection de dépendance DI)
+// 3. Enregistrement des Services (pour l'injection de dï¿½pendance DI)
 // ============================================
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
@@ -75,7 +86,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-        ClockSkew = TimeSpan.Zero  // Pas de tolérance sur l'expiration
+        ClockSkew = TimeSpan.Zero  // Pas de tolï¿½rance sur l'expiration
     };
 });
 
@@ -84,13 +95,18 @@ builder.Services.AddAuthorization();
 // ============================================
 // 5. Configuration des Controllers
 // ============================================
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Configuration pour sÃ©rialiser en camelCase (compatible avec JavaScript/TypeScript)
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 
 
 // ============================================
 // 6. Configuration de Swagger avec Swashbuckle (documentation API)
 // ============================================
-// Version permettant de gérer l'authentification (présence du cadena pour Bearer Token)
+// Version permettant de gï¿½rer l'authentification (prï¿½sence du cadena pour Bearer Token)
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -124,7 +140,7 @@ builder.Services.AddSwaggerGen(options =>
 
 
 // ============================================
-// 7. Configuration CORS (si frontend séparé)
+// 7. Configuration CORS (si frontend sï¿½parï¿½)
 // ============================================
 builder.Services.AddCors(options =>
 {
@@ -146,8 +162,8 @@ var app = builder.Build();
 // ============================================
 if (app.Environment.IsDevelopment())
 {
-    //app.MapOpenApi();         // Désactivé, OpenApi ne gère pas l'authentification par Token pour l'instant
-    app.UseSwagger();           // On utilise SwashBuckle à la place d'OpenApi en attendant que l'authent soit résolue (déc 2025)
+    //app.MapOpenApi();         // Dï¿½sactivï¿½, OpenApi ne gï¿½re pas l'authentification par Token pour l'instant
+    app.UseSwagger();           // On utilise SwashBuckle ï¿½ la place d'OpenApi en attendant que l'authent soit rï¿½solue (dï¿½c 2025)
 
     app.UseSwaggerUI(options =>
     {
@@ -158,12 +174,37 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");   // Pour pouvoir travailler avec une appli front en local
 
-app.UseAuthentication();        // Authentification avant de vérifier l'autorisation
+app.UseAuthentication();        // Authentification avant de vï¿½rifier l'autorisation
 
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
 app.MapControllers();
+
+// ============================================
+// 9. Initialisation de la base de donnÃ©es (Seeding)
+// ============================================
+// Seeding dÃ©sactivÃ© - dÃ©commenter pour rÃ©activer
+/*
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<BilletterieDbContext>();
+    
+    try
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation("DÃ©marrage du seeding de la base de donnÃ©es...");
+        await DatabaseSeeder.SeedAsync(context);
+        logger.LogInformation("Seeding de la base de donnÃ©es terminÃ© avec succÃ¨s.");
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Une erreur s'est produite lors du seeding de la base de donnÃ©es.");
+    }
+}
+*/
 
 app.Run();
