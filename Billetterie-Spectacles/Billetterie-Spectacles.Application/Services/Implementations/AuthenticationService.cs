@@ -3,6 +3,7 @@ using Billetterie_Spectacles.Application.Interfaces;
 using Billetterie_Spectacles.Application.Mappings;
 using Billetterie_Spectacles.Application.Services.Interfaces;
 using Billetterie_Spectacles.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
 
 namespace Billetterie_Spectacles.Application.Services.Implementations
 {
@@ -25,11 +26,11 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                 return null;
             }
 
-            // Vérifier le mot de passe avec BCrypt
-            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(password, user.Password);
+            // Vérifier le mot de passe avec PasswordHasher
+            var passwordHasher = new PasswordHasher<User>();
+            var result = passwordHasher.VerifyHashedPassword(user, user.Password, password);
 
-            // Si le mot de passe est invalide, retourner null
-            if (!isPasswordValid)
+            if (result == PasswordVerificationResult.Failed)
             {
                 return null;
             }
@@ -41,6 +42,21 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
         /// <summary>
         /// Valide les credentials d'un utilisateur sans retourner ses informations
         /// </summary>
+        //public async Task<bool> ValidateCredentialsAsync(string email, string password)
+        //{
+        //    // Récupérer l'utilisateur par email
+        //    User? user = await _userRepository.GetByEmailAsync(email);
+
+        //    // Si l'utilisateur n'existe pas, credentials invalides
+        //    if (user == null)
+        //    {
+        //        return false;
+        //    }
+
+        //    // Vérifier le mot de passe avec BCrypt
+        //    return BCrypt.Net.BCrypt.Verify(password, user.Password);
+        //}
+
         public async Task<bool> ValidateCredentialsAsync(string email, string password)
         {
             // Récupérer l'utilisateur par email
@@ -52,8 +68,11 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                 return false;
             }
 
-            // Vérifier le mot de passe avec BCrypt
-            return BCrypt.Net.BCrypt.Verify(password, user.Password);
+            // Vérifier le mot de passe avec PasswordHasher
+            var passwordHasher = new PasswordHasher<User>();
+            var verificationResult = passwordHasher.VerifyHashedPassword(user, user.Password, password);
+
+            return verificationResult != PasswordVerificationResult.Failed;
         }
 
         /// <summary>

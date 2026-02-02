@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/Éléments de solution/">
     <File Path=".gitignore" />
+    <File Path="global.json" />
   </Folder>
   <Project Path="Billetterie-Spectacles.Application/Billetterie-Spectacles.Application.csproj" Id="00e120e5-fc26-4c23-a275-8ef6fff13b2e" />
   <Project Path="Billetterie-Spectacles.Domain/Billetterie-Spectacles.Domain.csproj" Id="2d8fcb7b-1174-4887-80c3-96df9826d0fb" />

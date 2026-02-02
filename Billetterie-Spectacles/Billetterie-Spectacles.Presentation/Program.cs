@@ -7,7 +7,7 @@ using Billetterie_Spectacles.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
+using Microsoft.OpenApi.Models;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,15 +15,24 @@ var builder = WebApplication.CreateBuilder(args);
 // ============================================
 // 1. Configuration de la base de données
 // ============================================
+// test
 
-// Configuration de la connexion à la base de données
 String connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found");
+// LOG TEMPORAIRE POUR DIAGNOSTIC
+Console.WriteLine("===========================================");
+Console.WriteLine($"CONNECTION STRING UTILISÉE : {connectionString}");
+Console.WriteLine("===========================================");
 
 // Enregistrement du DbContext dans le container d'injection de dépendances
 // Configure EF Core pour utiliser SQL Server
 builder.Services.AddDbContext<BilletterieDbContext>(options =>
     options.UseSqlServer(connectionString));
+
+// LOG TEMPORAIRE POUR DIAGNOSTIC
+Console.WriteLine("===========================================");
+Console.WriteLine($"CONNECTION STRING UTILISÉE : {connectionString}");
+Console.WriteLine("===========================================");
 
 // Pour afficher le log des requetes faites par EF Core en console Visual Studio (aide au debug)
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Information);
@@ -48,8 +57,17 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<ISpectacleService, SpectacleService>();
 builder.Services.AddScoped<IPerformanceService, PerformanceService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<IPaymentService, MockPaymentService>();
+//builder.Services.AddScoped<IPaymentService, MockPaymentService>();
 // builder.Services.AddScoped<IPaymentService, StripePaymentService>();
+builder.Services.AddHttpClient<IPaymentHttpService, PaymentHttpService>(client =>
+{
+    var paymentServiceUrl = builder.Configuration["PaymentService:BaseUrl"]
+        ?? "https://localhost:7049"; //  URL locale par défaut
+
+    client.BaseAddress = new Uri(paymentServiceUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+});
 
 // ============================================
 // 4. Configuration de l'authentification JWT (Json Web Token)
@@ -98,30 +116,35 @@ builder.Services.AddSwaggerGen(options =>
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "Billetterie Spectacles API",
-        Version = "v1",
-        Description = "API de gestion de billetterie pour spectacles",
-        Contact = new OpenApiContact
-        {
-            Name = "Laurent",
-            Email = "laurent@example.com"
-        }
+        Version = "v1"
     });
 
     // Configuration JWT dans Swagger
-    options.AddSecurityDefinition("bearer", new OpenApiSecurityScheme
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
-        Description = "JWT Authorization header using the Bearer scheme."
+        Description = "JWT Authorization header using the Bearer scheme.",
+        In = ParameterLocation.Header,
+        Name = "Authorization"
     });
 
-    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
-        [new OpenApiSecuritySchemeReference("bearer", document)] = []
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
     });
 });
-
 
 // ============================================
 // 7. Configuration CORS (si frontend séparé)
@@ -138,11 +161,37 @@ builder.Services.AddCors(options =>
 });
 
 
+
+
 var app = builder.Build();
+
+// ============================================
+// 8. Application des migrations et seeding
+// ============================================
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<BilletterieDbContext>();
+
+        // Appliquer automatiquement les migrations au démarrage
+        context.Database.Migrate();
+        Console.WriteLine("Migrations appliquées avec succès");
+
+        // Seeder les données de test
+        DatabaseSeeder.Seed(context);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Une erreur s'est produite lors de la migration ou du seeding de la base de données");
+    }
+}
 
 
 // ============================================
-// 8. Configuration du pipeline HTTP
+// 9. Configuration du pipeline HTTP
 // ============================================
 if (app.Environment.IsDevelopment())
 {
