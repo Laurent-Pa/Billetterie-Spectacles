@@ -18,3 +18,12 @@ If you want to learn more about creating good readme files then refer the follow
 - [ASP.NET Core](https://github.com/aspnet/Home)
 - [Visual Studio Code](https://github.com/Microsoft/vscode)
 - [Chakra Core](https://github.com/Microsoft/ChakraCore)
+
+# Emails (MailHog)
+La confirmation de commande envoie un email HTML via SMTP. En local, l'application est configurée pour utiliser MailHog.
+
+Pour voir les emails :
+- démarrez MailHog
+- ouvrez l'interface web sur `http://localhost:8025`
+
+Par défaut, le SMTP est `localhost:1025` (configurable dans `appsettings.json`).
