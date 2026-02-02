@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Billetterie_Spectacles.Presentation</RootNamespace>
+    <UserSecretsId>6c19744c-64c4-42e4-aedb-2418fd965920</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
