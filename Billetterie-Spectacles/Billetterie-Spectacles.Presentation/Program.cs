@@ -13,35 +13,44 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // ============================================
-// 1. Configuration de la base de données
+// 1. Configuration de la base de donnï¿½es
 // ============================================
 // test
 
-String connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found");
 // LOG TEMPORAIRE POUR DIAGNOSTIC
 Console.WriteLine("===========================================");
-Console.WriteLine($"CONNECTION STRING UTILISÉE : {connectionString}");
+Console.WriteLine($"CONNECTION STRING UTILISï¿½E : {connectionString}");
 Console.WriteLine("===========================================");
 
-// Enregistrement du DbContext dans le container d'injection de dépendances
+// Enregistrement du DbContext dans le container d'injection de dï¿½pendances
 // Configure EF Core pour utiliser SQL Server
-builder.Services.AddDbContext<BilletterieDbContext>(options =>
-    options.UseSqlServer(connectionString));
+bool useSqlite = connectionString.TrimStart().StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase)
+    || connectionString.Contains(".db", StringComparison.OrdinalIgnoreCase);
 
-// LOG TEMPORAIRE POUR DIAGNOSTIC
+builder.Services.AddDbContext<BilletterieDbContext>(options =>
+{
+    if (useSqlite)
+        options.UseSqlite(connectionString);
+    else
+        options.UseSqlServer(connectionString);
+});
+
 Console.WriteLine("===========================================");
-Console.WriteLine($"CONNECTION STRING UTILISÉE : {connectionString}");
+Console.WriteLine($"Base de donnÃ©es : {(useSqlite ? "SQLite" : "SQL Server")}");
 Console.WriteLine("===========================================");
+
+// LOG TEMPORAIRE POUR DIAGNOSTIC (supprimÃ© - affichage ci-dessus - bloc supprimÃ© - supprimÃ©)
 
 // Pour afficher le log des requetes faites par EF Core en console Visual Studio (aide au debug)
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Information);
 
 // ============================================
-// 2. Enregistrement des Repositories (pour l'injection de dépendance DI)
+// 2. Enregistrement des Repositories (pour l'injection de dï¿½pendance DI)
 // ============================================
 
-// Une instance par requête
+// Une instance par requï¿½te
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ISpectacleRepository, SpectacleRepository>();
 builder.Services.AddScoped<IPerformanceRepository, PerformanceRepository>();
@@ -50,19 +59,20 @@ builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 
 
 // ============================================
-// 3. Enregistrement des Services (pour l'injection de dépendance DI)
+// 3. Enregistrement des Services (pour l'injection de dï¿½pendance DI)
 // ============================================
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<ISpectacleService, SpectacleService>();
 builder.Services.AddScoped<IPerformanceService, PerformanceService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 //builder.Services.AddScoped<IPaymentService, MockPaymentService>();
 // builder.Services.AddScoped<IPaymentService, StripePaymentService>();
 builder.Services.AddHttpClient<IPaymentHttpService, PaymentHttpService>(client =>
 {
     var paymentServiceUrl = builder.Configuration["PaymentService:BaseUrl"]
-        ?? "https://localhost:7049"; //  URL locale par défaut
+        ?? "https://localhost:7049"; //  URL locale par dï¿½faut
 
     client.BaseAddress = new Uri(paymentServiceUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
@@ -93,7 +103,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-        ClockSkew = TimeSpan.Zero  // Pas de tolérance sur l'expiration
+        ClockSkew = TimeSpan.Zero  // Pas de tolï¿½rance sur l'expiration
     };
 });
 
@@ -108,7 +118,7 @@ builder.Services.AddControllers();
 // ============================================
 // 6. Configuration de Swagger avec Swashbuckle (documentation API)
 // ============================================
-// Version permettant de gérer l'authentification (présence du cadena pour Bearer Token)
+// Version permettant de gï¿½rer l'authentification (prï¿½sence du cadena pour Bearer Token)
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -147,7 +157,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // ============================================
-// 7. Configuration CORS (si frontend séparé)
+// 7. Configuration CORS (si frontend sï¿½parï¿½)
 // ============================================
 builder.Services.AddCors(options =>
 {
@@ -175,17 +185,17 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<BilletterieDbContext>();
 
-        // Appliquer automatiquement les migrations au démarrage
+        // Appliquer automatiquement les migrations au dï¿½marrage
         context.Database.Migrate();
-        Console.WriteLine("Migrations appliquées avec succès");
+        Console.WriteLine("Migrations appliquï¿½es avec succï¿½s");
 
-        // Seeder les données de test
+        // Seeder les donnï¿½es de test
         DatabaseSeeder.Seed(context);
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Une erreur s'est produite lors de la migration ou du seeding de la base de données");
+        logger.LogError(ex, "Une erreur s'est produite lors de la migration ou du seeding de la base de donnï¿½es");
     }
 }
 
@@ -195,8 +205,8 @@ using (var scope = app.Services.CreateScope())
 // ============================================
 if (app.Environment.IsDevelopment())
 {
-    //app.MapOpenApi();         // Désactivé, OpenApi ne gère pas l'authentification par Token pour l'instant
-    app.UseSwagger();           // On utilise SwashBuckle à la place d'OpenApi en attendant que l'authent soit résolue (déc 2025)
+    //app.MapOpenApi();         // Dï¿½sactivï¿½, OpenApi ne gï¿½re pas l'authentification par Token pour l'instant
+    app.UseSwagger();           // On utilise SwashBuckle ï¿½ la place d'OpenApi en attendant que l'authent soit rï¿½solue (dï¿½c 2025)
 
     app.UseSwaggerUI(options =>
     {
@@ -207,7 +217,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");   // Pour pouvoir travailler avec une appli front en local
 
-app.UseAuthentication();        // Authentification avant de vérifier l'autorisation
+app.UseAuthentication();        // Authentification avant de vï¿½rifier l'autorisation
 
 app.UseHttpsRedirection();
 
