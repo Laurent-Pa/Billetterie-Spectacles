@@ -1,4 +1,4 @@
-﻿using Billetterie_Spectacles.Application.DTO.Request;
+using Billetterie_Spectacles.Application.DTO.Request;
 using Billetterie_Spectacles.Application.DTO.Response;
 using Billetterie_Spectacles.Domain.Enums;
 
@@ -19,7 +19,11 @@ namespace Billetterie_Spectacles.Application.Services.Interfaces
         Task<OrderDto?> GetWithTicketsAsync(int orderId);
 
         // Création et gestion
-        Task<OrderDto> CreateOrderAsync(CreateOrderDto dto, int userId);
+        Task<OrderDto> CreateOrderAsync(
+            CreateOrderDto dto,
+            int userId,
+            string? emailOverride = null,
+            string? nameOverride = null);
         Task<OrderDto> CancelOrderAsync(int orderId, int currentUserId);
         Task<OrderDto> ChangeOrderStatusAsync(int orderId, OrderStatus newStatus, int currentUserId, bool isAdmin);
 

@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using System.Data.Common;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +21,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found");
+bool isSqliteConfig = connectionString.TrimStart().StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase)
+    || connectionString.Contains(".db", StringComparison.OrdinalIgnoreCase);
+
+if (isSqliteConfig)
+{
+    connectionString = NormalizeSqliteConnectionString(connectionString, builder.Environment.ContentRootPath);
+}
 // LOG TEMPORAIRE POUR DIAGNOSTIC
 Console.WriteLine("===========================================");
 Console.WriteLine($"CONNECTION STRING UTILIS�E : {connectionString}");
@@ -26,8 +35,7 @@ Console.WriteLine("===========================================");
 
 // Enregistrement du DbContext dans le container d'injection de d�pendances
 // Configure EF Core pour utiliser SQL Server
-bool useSqlite = connectionString.TrimStart().StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase)
-    || connectionString.Contains(".db", StringComparison.OrdinalIgnoreCase);
+bool useSqlite = isSqliteConfig;
 
 builder.Services.AddDbContext<BilletterieDbContext>(options =>
 {
@@ -77,6 +85,16 @@ builder.Services.AddHttpClient<IPaymentHttpService, PaymentHttpService>(client =
     client.BaseAddress = new Uri(paymentServiceUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
     client.DefaultRequestHeaders.Add("Accept", "application/json");
+})
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler();
+    if (builder.Environment.IsDevelopment())
+    {
+        handler.ServerCertificateCustomValidationCallback =
+            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+    }
+    return handler;
 });
 
 // ============================================
@@ -181,21 +199,44 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<BilletterieDbContext>();
+    var logger = services.GetRequiredService<ILogger<Program>>();
+
     try
     {
-        var context = services.GetRequiredService<BilletterieDbContext>();
+        if (useSqlite)
+        {
+            // SQLite : ne pas reset pour conserver les commandes
+            if (!SqliteDatabaseExists(connectionString, app.Environment.ContentRootPath))
+            {
+                context.Database.EnsureCreated();
+                Console.WriteLine("SQLite: base créée (EnsureCreated).");
+            }
+            else
+            {
+                Console.WriteLine("SQLite: base existante, pas de reset.");
+            }
+        }
+        else
+        {
+            // Appliquer automatiquement les migrations au d�marrage
+            context.Database.Migrate();
+            Console.WriteLine("Migrations appliqu�es avec succ�s");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Erreur pendant les migrations EF Core");
+    }
 
-        // Appliquer automatiquement les migrations au d�marrage
-        context.Database.Migrate();
-        Console.WriteLine("Migrations appliqu�es avec succ�s");
-
-        // Seeder les donn�es de test
+    try
+    {
+        // Seeder les données de test
         DatabaseSeeder.Seed(context);
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Une erreur s'est produite lors de la migration ou du seeding de la base de donn�es");
+        logger.LogError(ex, "Erreur pendant le seeding");
     }
 }
 
@@ -226,3 +267,47 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static bool SqliteDatabaseExists(string connectionString, string contentRootPath)
+{
+    var builder = new DbConnectionStringBuilder { ConnectionString = connectionString };
+    if (!builder.TryGetValue("Data Source", out var dataSourceObj))
+        return false;
+
+    var dataSource = dataSourceObj?.ToString();
+    if (string.IsNullOrWhiteSpace(dataSource))
+        return false;
+
+    var candidates = new List<string>();
+    if (Path.IsPathRooted(dataSource))
+    {
+        candidates.Add(dataSource);
+    }
+    else
+    {
+        candidates.Add(Path.GetFullPath(Path.Combine(contentRootPath, dataSource)));
+        candidates.Add(Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, dataSource)));
+        candidates.Add(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, dataSource)));
+    }
+
+    return candidates.Distinct().Any(File.Exists);
+}
+
+static string NormalizeSqliteConnectionString(string connectionString, string contentRootPath)
+{
+    var builder = new DbConnectionStringBuilder { ConnectionString = connectionString };
+    if (!builder.TryGetValue("Data Source", out var dataSourceObj))
+        return connectionString;
+
+    var dataSource = dataSourceObj?.ToString();
+    if (string.IsNullOrWhiteSpace(dataSource))
+        return connectionString;
+
+    if (Path.IsPathRooted(dataSource))
+        return connectionString;
+
+    var absolutePath = Path.GetFullPath(Path.Combine(contentRootPath, dataSource));
+    builder["Data Source"] = absolutePath;
+    return builder.ConnectionString;
+}
+

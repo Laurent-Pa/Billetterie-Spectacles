@@ -1,4 +1,4 @@
-﻿using Billetterie_Spectacles.Application.DTO.Request;
+using Billetterie_Spectacles.Application.DTO.Request;
 using Billetterie_Spectacles.Application.DTO.Response;
 using Billetterie_Spectacles.Application.Helpers;
 using Billetterie_Spectacles.Application.Services.Interfaces;
@@ -14,11 +14,12 @@ namespace Billetterie_Spectacles.Presentation.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    public class AuthController(IUserService userService, IAuthenticationService authenticationService, JwtTokenHelper jwtTokenHelper) : ControllerBase
+    public class AuthController(IUserService userService, IAuthenticationService authenticationService, JwtTokenHelper jwtTokenHelper, IEmailService emailService) : ControllerBase
     {
         private readonly IUserService _userService = userService;
         private readonly IAuthenticationService _authenticationService = authenticationService;
         private readonly JwtTokenHelper _jwtTokenHelper = jwtTokenHelper;
+        private readonly IEmailService _emailService = emailService;
 
 
         /// <summary>
@@ -40,6 +41,15 @@ namespace Billetterie_Spectacles.Presentation.Controllers
 
                 // Générer le token JWT
                 string token = _jwtTokenHelper.GenerateToken(user);
+
+                // Email de bienvenue (non bloquant)
+                _ = Task.Run(async () =>
+                {
+                    await _emailService.SendWelcomeEmailAsync(
+                        toEmail: user.Email,
+                        toName: $"{user.Name} {user.Surname}"
+                    );
+                });
 
                 // Retourner la réponse
                 AuthResponseDto response = new (

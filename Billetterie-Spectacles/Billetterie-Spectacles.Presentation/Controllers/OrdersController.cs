@@ -1,4 +1,4 @@
-﻿using Billetterie_Spectacles.Application.DTO.Request;
+using Billetterie_Spectacles.Application.DTO.Request;
 using Billetterie_Spectacles.Application.DTO.Response;
 using Billetterie_Spectacles.Application.Services.Interfaces;
 using Billetterie_Spectacles.Domain.Entities;
@@ -46,6 +46,16 @@ namespace Billetterie_Spectacles.Presentation.Controllers
             return Enum.Parse<UserRole>(roleClaim);
         }
 
+        private string? GetCurrentUserEmail()
+        {
+            return User.FindFirst(ClaimTypes.Email)?.Value;
+        }
+
+        private string? GetCurrentUserName()
+        {
+            return User.FindFirst(ClaimTypes.Name)?.Value;
+        }
+
         /// <summary>
         /// Vérifie si l'utilisateur peut consulter une commande
         /// (propriétaire ou admin)
@@ -83,9 +93,11 @@ namespace Billetterie_Spectacles.Presentation.Controllers
             {
                 // Récupérer l'ID de l'utilisateur connecté
                 int currentUserId = GetCurrentUserId();
+                string? email = GetCurrentUserEmail();
+                string? name = GetCurrentUserName();
 
                 // Créer la commande (inclut le traitement du paiement)
-                OrderDto createdOrder = await _orderService.CreateOrderAsync(dto, currentUserId);
+                OrderDto createdOrder = await _orderService.CreateOrderAsync(dto, currentUserId, email, name);
 
                 // Retourner 201 Created
                 return Created(

@@ -1,4 +1,4 @@
-﻿using Billetterie_Spectacles.Application.DTO.Response;
+using Billetterie_Spectacles.Application.DTO.Response;
 using Billetterie_Spectacles.Application.Interfaces;
 using Billetterie_Spectacles.Application.Mappings;
 using Billetterie_Spectacles.Application.Services.Interfaces;
@@ -17,6 +17,7 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
         /// </summary>
         public async Task<UserDto?> LoginAsync(string email, string password)
         {
+            email = email?.ToLowerInvariant().Trim() ?? string.Empty;
             // Récupérer l'utilisateur par email
             User? user = await _userRepository.GetByEmailAsync(email);
 
@@ -59,6 +60,7 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
 
         public async Task<bool> ValidateCredentialsAsync(string email, string password)
         {
+            email = email?.ToLowerInvariant().Trim() ?? string.Empty;
             // Récupérer l'utilisateur par email
             User? user = await _userRepository.GetByEmailAsync(email);
 

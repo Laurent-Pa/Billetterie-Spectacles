@@ -1,4 +1,4 @@
-﻿using Billetterie_Spectacles.Application.DTO.Request;
+using Billetterie_Spectacles.Application.DTO.Request;
 using Billetterie_Spectacles.Application.DTO.Response;
 using Billetterie_Spectacles.Application.Interfaces;
 using Billetterie_Spectacles.Application.Mappings;
@@ -88,7 +88,11 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
 
         #region Création et gestion
 
-        public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto, int userId)
+        public async Task<OrderDto> CreateOrderAsync(
+            CreateOrderDto dto,
+            int userId,
+            string? emailOverride = null,
+            string? nameOverride = null)
         {
             // Validation : Vérifier que l'utilisateur existe
             User? user = await _userRepository.GetByIdAsync(userId) 
@@ -236,11 +240,16 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                 });
 
                 // Envoyer l'email de confirmation (en arrière-plan, ne bloque pas la réponse)
+                var toEmail = !string.IsNullOrWhiteSpace(emailOverride) ? emailOverride : user.Email;
+                var toName = !string.IsNullOrWhiteSpace(nameOverride)
+                    ? nameOverride
+                    : $"{user.Name} {user.Surname}";
+
                 _ = Task.Run(async () =>
                 {
                     await _emailService.SendOrderConfirmationEmailAsync(
-                        toEmail: user.Email,
-                        toName: $"{user.Name} {user.Surname}",
+                        toEmail: toEmail,
+                        toName: toName,
                         orderId: createdOrder.OrderId,
                         totalPrice: totalPrice,
                         tickets: ticketInfos
