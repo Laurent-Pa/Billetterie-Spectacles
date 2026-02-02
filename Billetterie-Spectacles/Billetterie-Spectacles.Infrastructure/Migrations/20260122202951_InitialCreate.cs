@@ -15,16 +15,16 @@ namespace Billetterie_Spectacles.Infrastructure.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    user_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    surname = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    password = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    phone = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    role = table.Column<int>(type: "int", nullable: false),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    user_id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    surname = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    email = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
+                    password = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
+                    phone = table.Column<string>(type: "TEXT", maxLength: 20, nullable: true),
+                    role = table.Column<int>(type: "INTEGER", nullable: false),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -35,13 +35,14 @@ namespace Billetterie_Spectacles.Infrastructure.Migrations
                 name: "Orders",
                 columns: table => new
                 {
-                    order_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    status = table.Column<int>(type: "int", nullable: false),
-                    date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    order_id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
                     total_price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    user_id = table.Column<int>(type: "int", nullable: false)
+                    status = table.Column<int>(type: "INTEGER", nullable: false),
+                    payment_intent_id = table.Column<string>(type: "TEXT", maxLength: 255, nullable: true),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    user_id = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -58,16 +59,16 @@ namespace Billetterie_Spectacles.Infrastructure.Migrations
                 name: "Spectacles",
                 columns: table => new
                 {
-                    spectacle_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    category = table.Column<int>(type: "int", nullable: false),
-                    description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    duration = table.Column<int>(type: "int", nullable: false),
-                    thumbnail = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    created_by_user_id = table.Column<int>(type: "int", nullable: false)
+                    spectacle_id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    category = table.Column<int>(type: "INTEGER", nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: true),
+                    duration = table.Column<int>(type: "INTEGER", nullable: false),
+                    thumbnail = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    created_by_user_id = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -84,15 +85,16 @@ namespace Billetterie_Spectacles.Infrastructure.Migrations
                 name: "Performances",
                 columns: table => new
                 {
-                    performance_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    date = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    status = table.Column<int>(type: "int", nullable: false),
-                    capacity = table.Column<int>(type: "int", nullable: false),
-                    available_tickets = table.Column<int>(type: "int", nullable: false),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    spectacle_id = table.Column<int>(type: "int", nullable: false)
+                    performance_id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    date = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    status = table.Column<int>(type: "INTEGER", nullable: false),
+                    unit_price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    capacity = table.Column<int>(type: "INTEGER", nullable: false),
+                    available_tickets = table.Column<int>(type: "INTEGER", nullable: false),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    spectacle_id = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -109,12 +111,14 @@ namespace Billetterie_Spectacles.Infrastructure.Migrations
                 name: "Tickets",
                 columns: table => new
                 {
-                    ticket_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    status = table.Column<int>(type: "int", nullable: false),
-                    price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    order_id = table.Column<int>(type: "int", nullable: false),
-                    performance_id = table.Column<int>(type: "int", nullable: false)
+                    ticket_id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    status = table.Column<int>(type: "INTEGER", nullable: false),
+                    unit_price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    order_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    performance_id = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {

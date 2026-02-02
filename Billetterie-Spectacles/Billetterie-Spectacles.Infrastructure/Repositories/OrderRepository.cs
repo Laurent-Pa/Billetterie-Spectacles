@@ -1,4 +1,4 @@
-﻿using Billetterie_Spectacles.Application.DTO.Response;
+using Billetterie_Spectacles.Application.DTO.Response;
 using Billetterie_Spectacles.Application.Interfaces;
 using Billetterie_Spectacles.Domain.Entities;
 using Billetterie_Spectacles.Domain.Enums;
@@ -60,6 +60,9 @@ namespace Billetterie_Spectacles.Infrastructure.Repositories
         public async Task<IEnumerable<Order>> GetByUserIdAsync(int userId)
         {
             return await _context.Orders
+                .Include(o => o.Tickets)
+                    .ThenInclude(t => t.Performance)
+                        .ThenInclude(p => p.Spectacle)
                 .Where(o => o.UserId == userId)
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
