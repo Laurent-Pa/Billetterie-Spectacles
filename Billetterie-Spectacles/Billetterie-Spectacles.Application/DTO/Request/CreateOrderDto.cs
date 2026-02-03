@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Billetterie_Spectacles.Application.DTO.Request
 {
@@ -14,6 +14,9 @@ namespace Billetterie_Spectacles.Application.DTO.Request
         [Required(ErrorMessage = "Au moins un billet doit être commandé")]
         [MinLength(1, ErrorMessage = "Au moins un billet doit être commandé")]
         public List<OrderItemDto> Items { get; set; } = new();
+
+        // Optionnel : PaymentMethodId Stripe créé côté frontend
+        public string? PaymentMethodId { get; set; }
     }
 
     /// <summary>

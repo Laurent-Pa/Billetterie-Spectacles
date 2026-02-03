@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Billetterie_Spectacles.Application.DTO.Request
 {
@@ -17,5 +17,8 @@ namespace Billetterie_Spectacles.Application.DTO.Request
 
         public string? CustomerEmail { get; set; }
         public string? Description { get; set; }
+
+        // Optionnel : identifiant du moyen de paiement Stripe
+        public string? PaymentMethodId { get; set; }
     }
 }

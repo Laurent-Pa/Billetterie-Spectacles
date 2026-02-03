@@ -179,10 +179,13 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             var paymentResponse = await _paymentHttpService.ProcessPaymentAsync(
                 amount: totalPrice,
                 currency: "EUR",
-                orderId: createdOrder.OrderId.ToString()
+                orderId: createdOrder.OrderId.ToString(),
+                paymentMethodId: dto.PaymentMethodId,
+                customerEmail: emailOverride ?? user.Email,
+                description: $"Order {createdOrder.OrderId}"
             );
 
-            if (paymentResponse == null || paymentResponse.Status != "Succeeded")
+            if (paymentResponse == null || !string.Equals(paymentResponse.Status, "Succeeded", StringComparison.OrdinalIgnoreCase))
             {
                 var errorMessage = paymentResponse?.ErrorMessage ?? "Service de paiement indisponible";
 
