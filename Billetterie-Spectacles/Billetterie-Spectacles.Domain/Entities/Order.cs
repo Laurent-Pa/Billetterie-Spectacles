@@ -87,8 +87,6 @@ namespace Billetterie_Spectacles.Domain.Entities
             if (Tickets.Count == 0)
                 throw new DomainException("Une commande doit contenir au moins un ticket.");
 
-            Status = OrderStatus.PaymentConfirmed;
-
             foreach (Ticket ticket in Tickets)
             {
                 ticket.MarkAsPaid();
