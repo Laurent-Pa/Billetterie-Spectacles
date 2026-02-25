@@ -6,6 +6,7 @@ using Billetterie_Spectacles.Domain.Enums;
 using Billetterie_Spectacles.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.Http;
 using System.Security.Claims;
 
 namespace Billetterie_Spectacles.Presentation.Controllers
@@ -15,10 +16,15 @@ namespace Billetterie_Spectacles.Presentation.Controllers
     [Authorize]  // Toutes les commandes nécessitent d'être authentifié
     public class OrdersController(
         IOrderService orderService,
-        IPerformanceService performanceService) : ControllerBase
+        IPerformanceService performanceService,
+        IHttpClientFactory httpClientFactory,
+        ILogger<OrdersController> logger
+        ) : ControllerBase
     {
         private readonly IOrderService _orderService = orderService;
         private readonly IPerformanceService _performanceService = performanceService;
+        private readonly HttpClient _httpClient = httpClientFactory.CreateClient("PaymentService");
+        private readonly ILogger<OrdersController> _logger = logger;
 
         // Méthodes helper
 
@@ -219,6 +225,84 @@ namespace Billetterie_Spectacles.Presentation.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = "Erreur lors de la récupération de la commande", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Vérifie auprès du microservice de paiement que le PaymentIntent est bien succeeded
+        /// </summary>
+        private async Task<bool> VerifyPaymentWithStripe(string paymentIntentId)
+        {
+            try
+            {
+                // Appelle ton microservice de paiement
+                var response = await _httpClient.GetAsync($"api/payments/{paymentIntentId}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return false;
+                }
+
+                var paymentResponse = await response.Content.ReadFromJsonAsync<PaymentResponseDto>();
+
+                // Vérifier que le statut est "succeeded"
+                return paymentResponse?.Status?.ToLower() == "succeeded";
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Confirme une commande après un paiement réussi
+        /// </summary>
+        [HttpPost("{id}/confirm")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ConfirmOrder(int id, [FromBody] PaymentResponseDto dto)
+        {
+            try
+            {
+                // Récupérer la commande avec ses tickets
+                OrderDto? order = await _orderService.GetWithTicketsAsync(id);
+
+                if (order == null)
+                {
+                    return NotFound(new { message = $"Order {id} not found" });
+                }
+
+                // Vérifier que la commande est en attente de paiement
+                if (order.Status != OrderStatus.Pending.ToString())
+                {
+                    return BadRequest(new { message = $"Order {id} is not pending. Current status: {order.Status}" });
+                }
+
+                // Vérifier le paiement auprès du microservice Stripe
+                bool paymentVerified = await VerifyPaymentWithStripe(dto.PaymentIntentId);
+
+                if (!paymentVerified)
+                {
+                    return BadRequest(new { message = "Payment verification failed" });
+                }
+
+                // Confirmer la commande via le service
+                await _orderService.ConfirmOrderAsync(id, dto.PaymentIntentId);
+
+                return Ok(new
+                {
+                    message = "Order confirmed successfully",
+                    orderId = id
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
             }
         }
     }

@@ -328,6 +328,32 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             return OrderMapper.EntityToDto(order);
         }
 
+        public async Task ConfirmOrderAsync(int orderId, string paymentIntentId)
+        {
+            // 1. Récupérer la commande avec ses tickets
+            Order? order = await _orderRepository.GetWithTicketsAsync(orderId);
+
+            if (order == null)
+            {
+                throw new NotFoundException($"Order {orderId} not found");
+            }
+
+            // 2. Utiliser la méthode métier de l'entité Order
+            // Cette méthode va :
+            // - Vérifier que Status == Pending
+            // - Assigner le PaymentIntentId
+            // - Changer le Status en PaymentConfirmed
+            // - Mettre à jour UpdatedAt
+            order.ConfirmPayment(paymentIntentId);
+
+            // 3. Marquer les tickets comme payés
+            // La méthode MarkAsPaid() de Order appelle déjà ticket.MarkAsPaid() sur tous les tickets
+            order.MarkAsPaid();
+
+            // 4. Sauvegarder en base de données
+            await _orderRepository.UpdateAsync(order);
+        }
+
         #endregion
     }
 }

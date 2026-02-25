@@ -22,6 +22,7 @@ namespace Billetterie_Spectacles.Application.Services.Interfaces
         Task<OrderDto> CreateOrderAsync(CreateOrderDto dto, int userId);
         Task<OrderDto> CancelOrderAsync(int orderId, int currentUserId);
         Task<OrderDto> ChangeOrderStatusAsync(int orderId, OrderStatus newStatus, int currentUserId, bool isAdmin);
+        Task ConfirmOrderAsync(int orderId, string paymentIntentId);              // Pour confirmation du paiement Stripe
 
         // Statistiques
         Task<decimal> GetTotalRevenueAsync();
