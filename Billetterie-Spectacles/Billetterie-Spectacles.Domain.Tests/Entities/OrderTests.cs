@@ -114,5 +114,41 @@ namespace Billetterie_Spectacles.Domain.Tests.Entities
             exception.Message.ShouldBe("Impossible d'ajouter un ticket à une commande qui n'est pas en attente.");
         }
         #endregion
+
+        #region Ticket Validation
+
+        [Fact]
+        public void AddTicket_NullTicket_ShouldThrowArgumentNullException()
+        {
+            // ARRANGE
+            Order order = new (userId: 1);
+
+            // ACT & ASSERT
+            var exception = Should.Throw<ArgumentNullException>(() =>
+            {
+                order.AddTicket(null!);
+            });
+
+            exception.ParamName.ShouldBe("ticket");
+        }
+
+
+        [Fact]
+        public void AddTicket_DuplicateTicket_ShouldThrowInvalidOperationException()
+        {
+            // ARRANGE
+            Order order = new (userId: 1);
+            Ticket ticket = new (performanceId: 1, unitPrice: 25.50m);
+            order.AddTicket(ticket); // Ajouter du ticket une première fois
+
+            // ACT & ASSERT
+            var exception = Should.Throw<InvalidOperationException>(() =>
+            {
+                order.AddTicket(ticket); // Si on tenter d'ajouter le MÊME ticket
+            });
+
+            exception.Message.ShouldContain("Ce ticket a déjà été ajouté à la commande."); 
+        }
+        #endregion
     }
 }

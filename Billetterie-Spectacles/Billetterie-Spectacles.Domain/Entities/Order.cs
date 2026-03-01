@@ -60,8 +60,10 @@ namespace Billetterie_Spectacles.Domain.Entities
             if (Status != OrderStatus.Pending)
                 throw new DomainException("Impossible d'ajouter un ticket à une commande qui n'est pas en attente.");
 
-            if (ticket.UnitPrice <= 0)
-                throw new ArgumentException("Le prix du ticket doit être positif.", nameof(ticket));
+            ArgumentNullException.ThrowIfNull(ticket);
+
+            if (Tickets.Contains(ticket)) // on compare les références d'objet
+                throw new InvalidOperationException("Ce ticket a déjà été ajouté à la commande.");
 
             Tickets.Add(ticket);
             CalculateTotalPrice();
