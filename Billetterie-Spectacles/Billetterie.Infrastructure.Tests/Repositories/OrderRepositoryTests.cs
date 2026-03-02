@@ -48,8 +48,7 @@ namespace Billetterie_Spectacles.Infrastructure.Tests.Repositories
 
             // Ajouter la commande dans le repository
             await repository.AddAsync(order);
-            //await context.SaveChangesAsync(); Modification sugggérée par Visual Studio
-            // xUnit.v3 permet d'annuler les tests en timeout
+            // xUnit.v3 permet d'annuler les tests en timeout avec le CancellationToken
             await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
 
@@ -61,6 +60,64 @@ namespace Billetterie_Spectacles.Infrastructure.Tests.Repositories
             savedOrder.UserId.ShouldBe(user.UserId);
             savedOrder.Status.ShouldBe(OrderStatus.Pending);
             savedOrder.TotalPrice.ShouldBe(0m);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_ExistingOrder_ShouldReturnOrder()
+        {
+            // --- ARRANGE ---
+            _fixture.Cleanup();
+
+            using BilletterieDbContext context = _fixture.CreateContext();
+            OrderRepository repository = new(context);
+
+            // Créer un utilisateur avec le constructeur
+            User user = new
+                (
+                name: "John",
+                surname: "Doe",
+                email: "john.doe@test.com",
+                password: "TestP@ssw0rd123",
+                phone: "0612345678",
+                role: UserRole.Client
+                );
+
+            context.Users.Add(user);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            // Créer et sauvegarder une commande
+            var order = new Order(userId: user.UserId);
+            await repository.AddAsync(order);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            // --- ACT ---
+            // Récupérer la commande par son id
+            Order? retrievedOrder = await repository.GetByIdAsync(order.OrderId);
+
+            // --- ASSERT ---
+            retrievedOrder.ShouldNotBeNull();
+            retrievedOrder.OrderId.ShouldBe(order.OrderId);
+            retrievedOrder.Status.ShouldBe(OrderStatus.Pending);
+            retrievedOrder.UserId.ShouldBe(user.UserId);
+            retrievedOrder.TotalPrice.ShouldBe(0m);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_NonExistingOrder_ShouldReturnNull()
+        {
+            // --- ARRANGE ---
+            _fixture.Cleanup();
+
+            using BilletterieDbContext context = _fixture.CreateContext();
+            OrderRepository repository = new (context);
+
+            int nonExistingOrderId = 99999;
+
+            // --- ACT ---
+            Order? retrievedOrder = await repository.GetByIdAsync(nonExistingOrderId);
+
+            // --- ASSERT ---
+            retrievedOrder.ShouldBeNull(); // Ne dois pas retourner une exception (404)
         }
     }
 }
