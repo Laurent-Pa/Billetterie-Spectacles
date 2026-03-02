@@ -52,6 +52,7 @@ namespace Billetterie_Spectacles.Infrastructure.Tests.Fixtures
             using BilletterieDbContext context = CreateContext();
 
             // Supprimer dans l'ordre inverse des dépendances (Foreign Keys)
+            // Pour éviter les erreurs SQL
             context.Tickets.RemoveRange(context.Tickets);
             context.Orders.RemoveRange(context.Orders);
             context.Performances.RemoveRange(context.Performances);
@@ -70,7 +71,7 @@ namespace Billetterie_Spectacles.Infrastructure.Tests.Fixtures
             using var context = CreateContext();
             context.Database.EnsureDeleted();
 
-            // Informe le GC qu'il n'a pas besoin d'appeler le finaliseur
+            // Informe le Garbage Collector qu'il n'a pas besoin d'appeler le finaliseur
             GC.SuppressFinalize(this);
 
         }
