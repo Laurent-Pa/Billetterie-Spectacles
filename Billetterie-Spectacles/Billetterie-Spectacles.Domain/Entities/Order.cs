@@ -19,7 +19,7 @@ namespace Billetterie_Spectacles.Domain.Entities
         public User User { get; set; } = null!;
 
         // Relation : Une commande contient plusieurs tickets
-        public ICollection<Ticket> Tickets { get; private set; } = new List<Ticket>(); // remplace le code commenté juste au-dessus
+        public ICollection<Ticket> Tickets { get; private set; } = new List<Ticket>();
 
         #region Constructors
         private Order() { }         // Constructeur privé pour EF Core
@@ -66,6 +66,7 @@ namespace Billetterie_Spectacles.Domain.Entities
                 throw new InvalidOperationException("Ce ticket a déjà été ajouté à la commande.");
 
             Tickets.Add(ticket);
+            ticket.Order = this; // pour définir la relation Ticket -> Order (bi-directionnelle // EF Core)
             CalculateTotalPrice();
         }
 
