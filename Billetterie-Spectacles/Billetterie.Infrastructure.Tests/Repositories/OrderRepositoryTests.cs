@@ -1,8 +1,10 @@
-﻿using Billetterie_Spectacles.Domain.Entities;
+﻿using Billeterie_Spectacles.Domain.Enums;
+using Billetterie_Spectacles.Domain.Entities;
 using Billetterie_Spectacles.Domain.Enums;
 using Billetterie_Spectacles.Infrastructure.Data;
 using Billetterie_Spectacles.Infrastructure.Repositories;
 using Billetterie_Spectacles.Infrastructure.Tests.Fixtures;
+using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
 
@@ -12,6 +14,7 @@ namespace Billetterie_Spectacles.Infrastructure.Tests.Repositories
     {
         private readonly DatabaseFixture _fixture = databaseFixture;
 
+#region Create and retrieve a simple order
         [Fact]
         public async Task AddAsync_ValidOrder_ShouldSaveToDataBase()
         {
@@ -119,5 +122,161 @@ namespace Billetterie_Spectacles.Infrastructure.Tests.Repositories
             // --- ASSERT ---
             retrievedOrder.ShouldBeNull(); // Ne dois pas retourner une exception (404)
         }
+        #endregion
+
+        #region Relation Order + Ticket
+
+        [Fact]
+        public async Task AddAsync_OrderWithTickets_ShouldSaveOrderandTickets()
+        {
+            // --- ARRANGE ---
+            _fixture.Cleanup();
+
+            using BilletterieDbContext context = _fixture.CreateContext();
+            OrderRepository repository = new(context);
+
+            // Créer un utilisateur avec le constructeur
+            User user = new
+                (
+                name: "John",
+                surname: "Doe",
+                email: "john.doe@test.com",
+                password: "TestP@ssw0rd123",
+                phone: "0612345678",
+                role: UserRole.Client
+                );
+
+            context.Users.Add(user);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            // Créer un spectacle 
+            Spectacle spectacle = new(
+                name: "Le lac des cygnes",
+                category: SpectacleCategory.Danse,
+                description: "Ballet classique",
+                duration: 120,
+                createdByUserId: user.UserId
+                );
+            context.Spectacles.Add(spectacle);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            // Créer une performance correspondant au spectacle
+            Performance performance = new(
+                spectacleId: spectacle.SpectacleId,
+                date: DateTime.UtcNow.AddDays(30),
+                unitPrice: 45.0m,
+                capacity: 200
+                );
+            context.Performances.Add(performance);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            // Créer une commande
+            Order order = new(userId: user.UserId);
+
+            // Créer deux tickets
+            Ticket ticket1 = new (performanceId: performance.PerformanceId, unitPrice:performance.UnitPrice);
+            Ticket ticket2 = new (performanceId: performance.PerformanceId, unitPrice:performance.UnitPrice);
+
+            order.AddTicket(ticket1);
+            order.AddTicket(ticket2);
+
+            // --- ACT ---
+            await repository.AddAsync(order);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            // Vérification avec un nouveau contexte
+            using BilletterieDbContext verificationContext = _fixture.CreateContext();
+            OrderRepository verificationRepository = new (verificationContext);
+            Order? savedOrder = await verificationRepository.GetWithTicketsAsync(order.OrderId);
+
+            // Vérifier que les tickets existent bien en DB
+            List<Ticket> savedTickets = verificationContext.Tickets
+                .Where(t => t.OrderId == order.OrderId)
+                .ToList();
+
+
+            // --- ASSERT ---
+
+            savedOrder.ShouldNotBeNull();
+            savedOrder.Tickets.Count.ShouldBe(2);
+            savedOrder.TotalPrice.ShouldBe(90.0m);
+
+            savedTickets.ShouldNotBeNull();
+            savedTickets.Count.ShouldBe(2);
+            savedTickets.All(t => t.PerformanceId == performance.PerformanceId).ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_WithInclude_ShouldLoadTickets()
+        {
+            // --- ARRANGE ---
+            _fixture.Cleanup();
+
+            using BilletterieDbContext context = _fixture.CreateContext();
+            OrderRepository repository = new(context);
+
+            // Créer un utilisateur avec le constructeur
+            User user = new
+                (
+                name: "John",
+                surname: "Doe",
+                email: "john.doe@test.com",
+                password: "TestP@ssw0rd123",
+                phone: "0612345678",
+                role: UserRole.Client
+                );
+
+            context.Users.Add(user);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            // Créer un spectacle 
+            Spectacle spectacle = new(
+                name: "Le lac des cygnes",
+                category: SpectacleCategory.Danse,
+                description: "Ballet classique",
+                duration: 120,
+                createdByUserId: user.UserId
+                );
+            context.Spectacles.Add(spectacle);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            // Créer une performance correspondant au spectacle
+            Performance performance = new(
+                spectacleId: spectacle.SpectacleId,
+                date: DateTime.UtcNow.AddDays(30),
+                unitPrice: 45.0m,
+                capacity: 200
+                );
+            context.Performances.Add(performance);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            // Créer une commande
+            Order order = new(userId: user.UserId);
+
+            // Créer deux tickets
+            Ticket ticket1 = new(performanceId: performance.PerformanceId, unitPrice: performance.UnitPrice);
+            Ticket ticket2 = new(performanceId: performance.PerformanceId, unitPrice: performance.UnitPrice);
+
+            order.AddTicket(ticket1);
+            order.AddTicket(ticket2);
+
+            // --- ACT ---
+            await repository.AddAsync(order);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+           // Vérification avec un nouveau contexte
+            using BilletterieDbContext retrievalContext = _fixture.CreateContext();
+            OrderRepository retrievalRepository = new (retrievalContext);
+            Order? retrievedOrder = await retrievalRepository.GetWithTicketsAsync(order.OrderId);
+
+            // --- ASSERT ---
+            retrievedOrder.ShouldNotBeNull();
+            retrievedOrder.Tickets.ShouldNotBeNull();
+            retrievedOrder.Tickets.Count.ShouldBe(2);
+
+            // Vérifier que les tickets sont bien chargés (/!\ pas de lazy loading)
+            retrievedOrder.Tickets.All(t => t.PerformanceId == performance.PerformanceId).ShouldBeTrue();
+        }
+        #endregion
     }
 }
