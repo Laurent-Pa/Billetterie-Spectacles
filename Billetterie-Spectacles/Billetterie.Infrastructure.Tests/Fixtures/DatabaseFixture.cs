@@ -18,6 +18,7 @@ namespace Billetterie_Spectacles.Infrastructure.Tests.Fixtures
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.Test.json", optional: false)
                 .AddJsonFile("appsettings.Test.Local.json", optional: true) // si besoin d'une config locale, non versionnée
+                .AddEnvironmentVariables() // pour création de la DB dans GitHubAction (nécessite le package Microsoft.Extensions.Configuration.EnvironmentVariables)
                 .Build();
 
             // Récupérer la connection string

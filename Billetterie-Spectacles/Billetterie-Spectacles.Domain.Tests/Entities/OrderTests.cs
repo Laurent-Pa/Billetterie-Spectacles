@@ -3,6 +3,7 @@ using Billetterie_Spectacles.Domain.Exceptions;
 using Shouldly;                                 // Pour les assertions lisibles
 namespace Billetterie_Spectacles.Domain.Tests.Entities
 {
+    [Trait("Category", "Unit")] // Pour être identifé par le filtre dans le Yaml comme test unitaire
     public class OrderTests
     {
         #region Success Cases
