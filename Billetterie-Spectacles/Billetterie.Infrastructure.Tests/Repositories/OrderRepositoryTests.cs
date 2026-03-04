@@ -10,6 +10,7 @@ using Shouldly;
 
 namespace Billetterie_Spectacles.Infrastructure.Tests.Repositories
 {
+    [Trait("Category", "Integration")] // Pour être identifé par le filtre dans le Yaml comme test d'intégration
     public class OrderRepositoryTests(DatabaseFixture databaseFixture) : IClassFixture<DatabaseFixture>
     {
         private readonly DatabaseFixture _fixture = databaseFixture;

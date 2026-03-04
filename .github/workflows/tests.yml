@@ -1,0 +1,68 @@
+name: CI - Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  unit-tests:
+    name: Tests unitaires
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installation de .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restauration des packages NuGet
+        run: dotnet restore
+
+      - name: Compilation
+        run: dotnet build --no-restore
+
+      - name: Exécution des tests unitaires
+        run: dotnet test --no-build --verbosity normal --filter "Category=Unit"
+
+  integration-tests:
+    name: Tests d'intégration
+    runs-on: ubuntu-latest
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          SA_PASSWORD: "TestPassword123!"
+          ACCEPT_EULA: "Y"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P TestPassword123! -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installation de .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restauration des packages NuGet
+        run: dotnet restore
+
+      - name: Compilation
+        run: dotnet build --no-restore
+
+      - name: Exécution des tests d'intégration
+        env:
+          ConnectionStrings__TestDatabase: "Server=localhost,1433;Database=BilletterieTests;User ID=sa;Password=TestPassword123!;TrustServerCertificate=True;"
+        run: dotnet test --no-build --verbosity normal --filter "Category=Integration"
