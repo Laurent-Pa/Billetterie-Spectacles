@@ -19,11 +19,7 @@ namespace Billetterie_Spectacles.Domain.Entities
         public User User { get; set; } = null!;
 
         // Relation : Une commande contient plusieurs tickets
-
-        // Commenté pour tester si readonly pose pb avec EF Core lors de la création d'une commande
-        //private readonly List<Ticket> _tickets = new();
-        //public IReadOnlyCollection<Ticket> Tickets => _tickets.AsReadOnly();
-        public ICollection<Ticket> Tickets { get; private set; } = new List<Ticket>(); // remplace le code commenté juste au-dessus
+        public ICollection<Ticket> Tickets { get; private set; } = new List<Ticket>();
 
         #region Constructors
         private Order() { }         // Constructeur privé pour EF Core
@@ -64,10 +60,13 @@ namespace Billetterie_Spectacles.Domain.Entities
             if (Status != OrderStatus.Pending)
                 throw new DomainException("Impossible d'ajouter un ticket à une commande qui n'est pas en attente.");
 
-            if (ticket.UnitPrice <= 0)
-                throw new ArgumentException("Le prix du ticket doit être positif.", nameof(ticket));
+            ArgumentNullException.ThrowIfNull(ticket);
+
+            if (Tickets.Contains(ticket)) // on compare les références d'objet
+                throw new InvalidOperationException("Ce ticket a déjà été ajouté à la commande.");
 
             Tickets.Add(ticket);
+            ticket.Order = this; // pour définir la relation Ticket -> Order (bi-directionnelle // EF Core)
             CalculateTotalPrice();
         }
 
@@ -86,8 +85,6 @@ namespace Billetterie_Spectacles.Domain.Entities
 
             if (Tickets.Count == 0)
                 throw new DomainException("Une commande doit contenir au moins un ticket.");
-
-            Status = OrderStatus.PaymentConfirmed;
 
             foreach (Ticket ticket in Tickets)
             {

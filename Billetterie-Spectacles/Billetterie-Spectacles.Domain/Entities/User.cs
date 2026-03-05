@@ -100,7 +100,7 @@ namespace Billetterie_Spectacles.Domain.Entities
             if (password.Length < 8)
                 throw new ArgumentException("Le mot de passe doit contenir au moins 8 caractères.", nameof(password));
 
-            // TODO: Hasher le mot de passe (bcrypt, Argon2) avant de le stocker
+            // TODO: Hasher le mot de passe avant de le stocker
             Password = password;
             UpdateTimestamp();
         }

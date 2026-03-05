@@ -104,6 +104,9 @@ artifacts/
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 
+# Test configuration overrides (personal settings)
+**/appsettings.Test.Local.json
+
 # StyleCop
 StyleCopReport.xml
 
