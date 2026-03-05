@@ -1,4 +1,4 @@
-﻿using Billetterie_Spectacles.Application.DTO.Request;
+using Billetterie_Spectacles.Application.DTO.Request;
 using Billetterie_Spectacles.Application.DTO.Response;
 using Billetterie_Spectacles.Application.Services.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -18,7 +18,13 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             _logger = logger;
         }
 
-        public async Task<PaymentResponseDto?> ProcessPaymentAsync(decimal amount, string currency, string orderId)
+        public async Task<PaymentResponseDto?> ProcessPaymentAsync(
+            decimal amount,
+            string currency,
+            string orderId,
+            string? paymentMethodId = null,
+            string? customerEmail = null,
+            string? description = null)
         {
             try
             {
@@ -26,7 +32,10 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
                 {
                     Amount = amount,
                     Currency = currency,
-                    OrderId = orderId
+                    OrderId = orderId,
+                    PaymentMethodId = paymentMethodId,
+                    CustomerEmail = customerEmail,
+                    Description = description
                 };
 
                 var json = JsonSerializer.Serialize(request);

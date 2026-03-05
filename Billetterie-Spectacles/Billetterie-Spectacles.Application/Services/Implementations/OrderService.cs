@@ -1,4 +1,4 @@
-﻿using Billetterie_Spectacles.Application.DTO.Request;
+using Billetterie_Spectacles.Application.DTO.Request;
 using Billetterie_Spectacles.Application.DTO.Response;
 using Billetterie_Spectacles.Application.Interfaces;
 using Billetterie_Spectacles.Application.Mappings;
@@ -18,7 +18,8 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
         ITicketRepository _ticketRepository,                // Créer et gérer les tickets
         IUserRepository _userRepository,                     // Vérifier que l'user existe
         //IPaymentService _paymentService,                    // Service de paiment (interne appli)
-        IPaymentHttpService _paymentHttpService             // Micro-Service de paiment (externe appli)
+        IPaymentHttpService _paymentHttpService,             // Micro-Service de paiment (externe appli)
+        IEmailService _emailService                          // Service d'envoi d'emails
         ): IOrderService
     {
         #region Consultation
@@ -87,7 +88,11 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
 
         #region Création et gestion
 
-        public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto, int userId)
+        public async Task<OrderDto> CreateOrderAsync(
+            CreateOrderDto dto,
+            int userId,
+            string? emailOverride = null,
+            string? nameOverride = null)
         {
             // Validation : Vérifier que l'utilisateur existe
             User? user = await _userRepository.GetByIdAsync(userId) 
@@ -174,10 +179,13 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
             var paymentResponse = await _paymentHttpService.ProcessPaymentAsync(
                 amount: totalPrice,
                 currency: "EUR",
-                orderId: createdOrder.OrderId.ToString()
+                orderId: createdOrder.OrderId.ToString(),
+                paymentMethodId: dto.PaymentMethodId,
+                customerEmail: emailOverride ?? user.Email,
+                description: $"Order {createdOrder.OrderId}"
             );
 
-            if (paymentResponse == null || paymentResponse.Status != "Succeeded")
+            if (paymentResponse == null || !string.Equals(paymentResponse.Status, "Succeeded", StringComparison.OrdinalIgnoreCase))
             {
                 var errorMessage = paymentResponse?.ErrorMessage ?? "Service de paiement indisponible";
 
@@ -213,6 +221,52 @@ namespace Billetterie_Spectacles.Application.Services.Implementations
 
             // Recharger la commande avec ses tickets pour le retour
             Order? orderWithTickets = await _orderRepository.GetWithTicketsAsync(createdOrder.OrderId);
+            
+            // === PHASE 5 : ENVOI DE L'EMAIL DE CONFIRMATION ===
+            try
+            {
+                // Récupérer les tickets avec leurs performances et spectacles pour l'email
+                var ticketsWithDetails = await _ticketRepository.GetByOrderWithPerformanceAsync(createdOrder.OrderId);
+                
+                // Préparer les informations pour l'email
+                var ticketInfos = ticketsWithDetails.Select(ticket => 
+                {
+                    var spectacleName = ticket.Performance?.Spectacle?.Name ?? "Spectacle inconnu";
+                    var performanceDate = ticket.Performance?.Date ?? DateTime.MinValue;
+                    
+                    return new OrderTicketInfo(
+                        SpectacleName: spectacleName,
+                        PerformanceDate: performanceDate,
+                        UnitPrice: ticket.UnitPrice,
+                        TicketId: ticket.TicketId
+                    );
+                });
+
+                // Envoyer l'email de confirmation (en arrière-plan, ne bloque pas la réponse)
+                var toEmail = !string.IsNullOrWhiteSpace(emailOverride) ? emailOverride : user.Email;
+                var toName = !string.IsNullOrWhiteSpace(nameOverride)
+                    ? nameOverride
+                    : $"{user.Name} {user.Surname}";
+
+                _ = Task.Run(async () =>
+                {
+                    await _emailService.SendOrderConfirmationEmailAsync(
+                        toEmail: toEmail,
+                        toName: toName,
+                        orderId: createdOrder.OrderId,
+                        totalPrice: totalPrice,
+                        tickets: ticketInfos
+                    );
+                });
+            }
+            catch (Exception ex)
+            {
+                // Log l'erreur mais ne fait pas échouer la commande
+                // L'email est secondaire, la commande est déjà confirmée
+                // TODO: Ajouter un logger si disponible
+                Console.WriteLine($"Erreur lors de l'envoi de l'email de confirmation: {ex.Message}");
+            }
+
             return OrderMapper.EntityToDto(orderWithTickets!);
 
         }

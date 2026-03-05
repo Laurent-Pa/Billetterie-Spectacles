@@ -1,7 +1,8 @@
-﻿using Billetterie_Spectacles.Application.Interfaces;
+using Billetterie_Spectacles.Application.Interfaces;
 using Billetterie_Spectacles.Domain.Entities;
 using Billetterie_Spectacles.Domain.Enums;
 using Billetterie_Spectacles.Infrastructure.Data;
+using System;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -32,6 +33,13 @@ namespace Billetterie_Spectacles.Infrastructure.Repositories
 
         public async Task<User?> AddAsync(User user)
         {
+            var providerName = _context.Database.ProviderName ?? string.Empty;
+            if (providerName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) && user.UserId == 0)
+            {
+                var maxId = await _context.Users.MaxAsync(u => (int?)u.UserId) ?? 0;
+                user.UserId = maxId + 1;
+            }
+
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
             return user;
@@ -61,14 +69,16 @@ namespace Billetterie_Spectacles.Infrastructure.Repositories
 
         public async Task<User?> GetByEmailAsync(string email)
         {
+            var normalizedEmail = email?.ToLowerInvariant().Trim();
             return await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == email);
+                .FirstOrDefaultAsync(u => u.Email == normalizedEmail);
         }
 
         public async Task<bool> EmailExistsAsync(string email)
         {
+            var normalizedEmail = email?.ToLowerInvariant().Trim();
             return await _context.Users
-                .AnyAsync(u => u.Email == email);
+                .AnyAsync(u => u.Email == normalizedEmail);
         }
 
         public async Task<IEnumerable<User>> GetByRoleAsync(UserRole role)
