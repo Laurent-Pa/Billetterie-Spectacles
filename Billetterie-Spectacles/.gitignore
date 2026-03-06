@@ -305,10 +305,10 @@ FodyWeavers.xsd
 .idea/
 
 # SQLite (dev)
-BilleterieSpectacles.db
 
 Billetterie-Spectacles/Billetterie-Spectacles.Presentation/secrets.json
 
 # Python virtual environments
 .venv/
 Billetterie-Spectacles/Locust/__pycache__
+BilleterieSpectacles.db
