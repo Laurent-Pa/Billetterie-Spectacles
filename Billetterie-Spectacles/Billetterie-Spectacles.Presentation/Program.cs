@@ -201,20 +201,31 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<BilletterieDbContext>();
     var logger = services.GetRequiredService<ILogger<Program>>();
+    bool isTestingEnvironment = app.Environment.IsEnvironment("Testing");
 
     try
     {
         if (useSqlite)
         {
-            // SQLite : ne pas reset pour conserver les commandes
-            if (!SqliteDatabaseExists(connectionString, app.Environment.ContentRootPath))
+            if (isTestingEnvironment)
             {
+                // En environnement de test (Selenium), on repart toujours d'une base propre
+                context.Database.EnsureDeleted();
                 context.Database.EnsureCreated();
-                Console.WriteLine("SQLite: base créée (EnsureCreated).");
+                Console.WriteLine("SQLite (Testing): base recréée (EnsureDeleted + EnsureCreated).");
             }
             else
             {
-                Console.WriteLine("SQLite: base existante, pas de reset.");
+                // SQLite : ne pas reset pour conserver les commandes en Dev
+                if (!SqliteDatabaseExists(connectionString, app.Environment.ContentRootPath))
+                {
+                    context.Database.EnsureCreated();
+                    Console.WriteLine("SQLite: base créée (EnsureCreated).");
+                }
+                else
+                {
+                    Console.WriteLine("SQLite: base existante, pas de reset.");
+                }
             }
         }
         else
@@ -231,8 +242,15 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        // Seeder les données de test
-        DatabaseSeeder.Seed(context);
+        // Seeder les données selon l'environnement
+        if (isTestingEnvironment)
+        {
+            DatabaseSeeder.SeedForTesting(context);
+        }
+        else
+        {
+            DatabaseSeeder.Seed(context);
+        }
     }
     catch (Exception ex)
     {

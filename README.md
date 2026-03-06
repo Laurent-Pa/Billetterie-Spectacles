@@ -155,6 +155,25 @@ dotnet run
 - **API**: http://localhost:5293
 - **Swagger UI**: http://localhost:5293/swagger
 
+### Testing Performance
+
+ 
+
+- **Performance tests with Locust**:
+  - Location: `Billetterie-Spectacles/Billetterie-Spectacles/Locust`
+  - Setup:
+    ```bash
+    cd Billetterie-Spectacles/Billetterie-Spectacles/Locust
+    python -m venv .venv
+    source .venv/bin/activate  #  Windows: .venv\Scripts\activate
+    pip install -r requirements.txt
+    ```
+  - Run Locust (with the API running in Testing mode):
+    ```bash
+    locust -f locustfile.py --host http://localhost:5293
+    ```
+  - Then open `http://localhost:8089` and start the swarm.
+
 ### Available launch profiles
 
 - **http (localhost)**: For Swagger and classic API development
